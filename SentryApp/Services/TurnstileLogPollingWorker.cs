@@ -118,7 +118,7 @@ WHERE tl.IsDeleted = 0
 ORDER BY tl.TimeLogStamp ASC, tl.Id ASC;";
 
         var rows = await db.TurnstileLogRows
-            .FromSqlRaw(sql, _sinceUtc)
+            .FromSqlRaw(sql, _sinceUtc, _lastId)
             .AsNoTracking()
             .ToListAsync(ct);
 
