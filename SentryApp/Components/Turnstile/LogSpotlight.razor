@@ -1,0 +1,37 @@
+@using SentryApp.Services
+
+<div class="spotlight">
+    @if (Entry is null)
+    {
+        <div class="spotlight-empty">
+            <div class="title">Waiting for turnstile logs…</div>
+            <div class="subtitle">Tap an ID to see details here.</div>
+        </div>
+    }
+    else
+    {
+        <div class="spotlight-card anim-in">
+            <img class="spotlight-photo" src="@Entry.PhotoUrl" alt="Photo" />
+
+            <div class="spotlight-details">
+                <div class="spotlight-name">@Entry.PersonnelName</div>
+
+                <div class="spotlight-meta">
+                    <div><span class="k">Access #:</span> @Entry.AccessNumber</div>
+                    <div><span class="k">Device:</span> @Entry.DeviceName</div>
+                    <div><span class="k">VerifyMode:</span> @Entry.VerifyMode</div>
+                    <div><span class="k">Event:</span> @Entry.Event</div>
+                    <div><span class="k">EventAddress:</span> @Entry.EventAddress</div>
+                </div>
+
+                <div class="spotlight-time">
+                    @Entry.TimeLogStamp.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public TurnstileLogEntry? Entry { get; set; }
+}

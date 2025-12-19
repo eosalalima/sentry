@@ -1,0 +1,13 @@
+@using SentryApp.Services
+
+<div class="queue-card anim-in">
+    <img class="queue-photo" src="@Entry.PhotoUrl" alt="Photo" />
+    <div class="queue-text">
+        <div class="queue-name">@Entry.PersonnelName</div>
+        <div class="queue-access">@Entry.AccessNumber</div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public TurnstileLogEntry Entry { get; set; } = new();
+}

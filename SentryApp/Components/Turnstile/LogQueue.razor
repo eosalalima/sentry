@@ -1,0 +1,21 @@
+@using SentryApp.Services
+
+<div class="queue">
+    <div class="queue-title">Recent Queue</div>
+
+    @if (Items is null || Items.Count == 0)
+    {
+        <div class="queue-empty">No recent entries.</div>
+    }
+    else
+    {
+        @foreach (var item in Items)
+        {
+            <LogQueueItemCard Entry="item.Entry" />
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<TurnstileQueueItem> Items { get; set; } = Array.Empty<TurnstileQueueItem>();
+}

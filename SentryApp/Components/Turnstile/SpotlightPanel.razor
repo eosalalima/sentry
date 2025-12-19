@@ -1,0 +1,58 @@
+@using SentryApp.Services
+@implements IDisposable
+
+<div class="spot">
+    <div class="spot-bar @(IsOut ? "bar-out" : "bar-in")">
+        <div class="spot-bar-left">@((Entry?.LogType ?? "").ToUpperInvariant())</div>
+        <div class="spot-bar-right">@_clockText</div>
+    </div>
+
+    @if (Entry is null)
+    {
+        <div class="spot-empty">Waiting for turnstile logs…</div>
+    }
+    else
+    {
+        <div class="spot-body">
+            <div class="spot-photo-wrap">
+                <img class="spot-photo" src="@Entry.PhotoUrl" alt="Photo" />
+            </div>
+
+            <div class="spot-name">@Entry.PersonnelName</div>
+            <div class="spot-sub">@Entry.VerifyMode</div>
+
+            <div class="spot-meta">
+                <div><span>Access #</span> @Entry.AccessNumber</div>
+                <div><span>Device</span> @Entry.DeviceName</div>
+                <div><span>Event</span> @Entry.Event</div>
+                <div><span>EventAddress</span> @Entry.EventAddress</div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public TurnstileLogEntry? Entry { get; set; }
+
+    private readonly System.Timers.Timer _clock = new(1000);
+    private string _clockText = DateTime.Now.ToString("HH:mm:ss");
+
+    private bool IsOut => string.Equals(Entry?.LogType, "OUT", StringComparison.OrdinalIgnoreCase);
+
+    protected override void OnInitialized()
+    {
+        _clock.Elapsed += (_, _) =>
+        {
+            _clockText = DateTime.Now.ToString("HH:mm:ss");
+            _ = InvokeAsync(StateHasChanged);
+        };
+        _clock.AutoReset = true;
+        _clock.Start();
+    }
+
+    public void Dispose()
+    {
+        _clock.Stop();
+        _clock.Dispose();
+    }
+}

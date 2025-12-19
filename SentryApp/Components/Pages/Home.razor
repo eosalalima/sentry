@@ -1,0 +1,34 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject SentryApp.Services.TurnstileLogState State
+
+@using SentryApp.Components.Turnstile
+
+<div class="mon-page">
+    <MonitoringHeader />
+
+    <div class="mon-body">
+        <div class="mon-left">
+            <FeedGrid Items="State.QueueSnapshot" />
+        </div>
+
+        <div class="mon-right">
+            <SpotlightPanel Entry="State.Spotlight" />
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        State.Changed += OnStateChanged;
+    }
+
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        State.Changed -= OnStateChanged;
+    }
+}

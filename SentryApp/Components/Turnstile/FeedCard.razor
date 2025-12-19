@@ -1,0 +1,24 @@
+@using SentryApp.Services
+
+<div class="feed-card">
+    <div class="feed-card-bar @(IsOut ? "bar-out" : "bar-in")">
+        @((Entry.LogType ?? "").ToUpperInvariant())
+    </div>
+
+    <div class="feed-card-body">
+        <img class="feed-photo" src="@Entry.PhotoUrl" alt="Photo" />
+        <div class="feed-name">@Entry.PersonnelName</div>
+
+        <!-- your spec says left side shows AccessNumber -->
+        <div class="feed-sub">@Entry.AccessNumber</div>
+
+        <div class="feed-time">
+            @Entry.TimeLogStamp.LocalDateTime.ToString("HH:mm:ss")
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public TurnstileLogEntry Entry { get; set; } = new();
+    private bool IsOut => string.Equals(Entry.LogType, "OUT", StringComparison.OrdinalIgnoreCase);
+}

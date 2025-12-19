@@ -1,0 +1,12 @@
+@using SentryApp.Services
+
+<div class="feed-grid">
+    @foreach (var item in Items)
+    {
+        <FeedCard Entry="item.Entry" />
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<TurnstileQueueItem> Items { get; set; } = Array.Empty<TurnstileQueueItem>();
+}

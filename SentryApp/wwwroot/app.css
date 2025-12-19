@@ -1,0 +1,229 @@
+:root{
+  --bg:#f3f4f6;
+  --card:#ffffff;
+  --shadow: 0 1px 2px rgba(0,0,0,.08);
+  --green:#1b8755;
+  --green2:#177a4d;
+  --blue:#0d6efd;
+}
+
+.mon-page{
+  background:var(--bg);
+  min-height:100vh;
+}
+
+.mon-topbar{
+  height:44px;
+  background:#fff;
+  border-bottom:1px solid rgba(0,0,0,.06);
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  padding:0 18px;
+}
+
+.mon-about{
+  text-decoration:none;
+  color:#0b5ed7;
+  font-size:14px;
+}
+
+.mon-header{
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:14px 18px;
+}
+
+.mon-brand{
+  display:flex;
+  gap:14px;
+  align-items:center;
+}
+
+.mon-logo{
+  width:72px;
+  height:48px;
+  object-fit:contain;
+  background:#000;
+  padding:6px;
+}
+
+.mon-title{
+  font-weight:700;
+  letter-spacing:.3px;
+}
+
+.mon-subtitle{
+  opacity:.7;
+  font-size:13px;
+  margin-top:2px;
+}
+
+.mon-live-btn{
+  background:var(--blue);
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:8px 14px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.mon-body{
+  display:flex;
+  gap:18px;
+  padding:18px;
+  box-sizing:border-box;
+}
+
+.mon-left{ flex: 0 0 56%; }
+.mon-right{ flex: 1; }
+
+@media (max-width: 1200px){
+  .mon-body{ flex-direction:column; }
+  .mon-left{ flex-basis:auto; }
+}
+
+/* LEFT GRID (4 columns like screenshot) */
+.feed-grid{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap:18px;
+}
+
+@media (max-width: 1400px){
+  .feed-grid{ grid-template-columns: repeat(3, minmax(0,1fr)); }
+}
+@media (max-width: 1000px){
+  .feed-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 650px){
+  .feed-grid{ grid-template-columns: 1fr; }
+}
+
+.feed-card{
+  background:var(--card);
+  border-radius:8px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  border:1px solid rgba(0,0,0,.06);
+}
+
+.feed-card-bar{
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-weight:800;
+  letter-spacing:.5px;
+}
+
+.bar-in{ background:var(--green); }
+.bar-out{ background:var(--green); } /* screenshot uses same green; change if you want red */
+
+.feed-card-body{
+  padding:12px;
+  text-align:center;
+}
+
+.feed-photo{
+  width:110px;
+  height:110px;
+  border-radius:6px;
+  object-fit:cover;
+  background:#eee;
+}
+
+.feed-name{
+  margin-top:10px;
+  font-weight:700;
+}
+
+.feed-sub{
+  margin-top:2px;
+  opacity:.75;
+  font-size:13px;
+}
+
+.feed-time{
+  margin-top:8px;
+  font-weight:800;
+}
+
+/* RIGHT SPOTLIGHT */
+.spot{
+  background:var(--card);
+  border-radius:8px;
+  box-shadow:var(--shadow);
+  border:1px solid rgba(0,0,0,.06);
+  overflow:hidden;
+  min-height: 620px;
+}
+
+.spot-bar{
+  height:56px;
+  padding:0 18px;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-weight:800;
+  letter-spacing:.5px;
+}
+
+.spot-body{
+  padding:22px;
+  text-align:center;
+}
+
+.spot-photo-wrap{
+  width: 520px;
+  max-width: 92%;
+  margin: 18px auto 8px;
+  background:#f1f2f4;
+  border-radius:8px;
+  padding:18px;
+}
+
+.spot-photo{
+  width: 100%;
+  height: auto;
+  max-height: 360px;
+  object-fit:cover;
+  border-radius:8px;
+}
+
+.spot-name{
+  margin-top:10px;
+  font-size:28px;
+  font-weight:900;
+}
+
+.spot-sub{
+  margin-top:4px;
+  opacity:.75;
+}
+
+.spot-meta{
+  margin: 18px auto 0;
+  max-width: 520px;
+  display:grid;
+  gap:10px;
+  text-align:left;
+  opacity:.9;
+}
+
+.spot-meta span{
+  display:inline-block;
+  width:120px;
+  opacity:.65;
+}
+
+.spot-empty{
+  padding:40px 22px;
+  opacity:.7;
+  text-align:center;
+}
