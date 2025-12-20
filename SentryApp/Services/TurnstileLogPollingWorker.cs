@@ -71,19 +71,17 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         // IMPORTANT:
-        // - We poll TimeLogs (per your requirement)
-        // - We OUTER APPLY the closest matching DeviceLog (by timestamp proximity) for Event/EventAddress
+        // - We poll DeviceLogs (per your requirement)
         // - We join Personnels (name/photo) and ZKDevices (device name)
-        //
-        // If your DeviceLogs arrives slightly later than TimeLogs, you may increase the DATEDIFF window.
         var sql = $@"
 SELECT TOP ({_maxRowsPerPoll})
-    tl.Id                AS TimeLogId,
-    tl.TimeLogStamp      AS TimeLogStamp,
-    tl.LogType           AS LogType,
-    tl.AccessNumber      AS AccessNumber,
-    tl.DeviceSerialNumber AS DeviceSerialNumber,
-    tl.VerifyMode        AS TimeLogVerifyMode,
+    dl.Id                AS TimeLogId,
+    dl.TimeLogStamp      AS TimeLogStamp,
+    dl.LogType           AS LogType,
+    dl.AccessNumber      AS AccessNumber,
+    dl.DeviceSerialNumber AS DeviceSerialNumber,
+    dl.VerifyMode        AS DeviceLogVerifyMode,
+    dl.VerifyMode        AS TimeLogVerifyMode,
 
     p.LastName           AS LastName,
     p.FirstName          AS FirstName,
@@ -91,31 +89,21 @@ SELECT TOP ({_maxRowsPerPoll})
 
     dl.Event             AS Event,
     dl.EventAddress      AS EventAddress,
-    zk.Name              AS DeviceName,
-    dl.VerifyMode        AS DeviceLogVerifyMode
+    zk.Name              AS DeviceName
 
-FROM TimeLogs tl
-OUTER APPLY (
-    SELECT TOP 1 d.*
-    FROM DeviceLogs d
-    WHERE d.IsDeleted = 0
-      AND d.AccessNumber = tl.AccessNumber
-      AND d.DeviceSerialNumber = tl.DeviceSerialNumber
-      AND ABS(DATEDIFF(SECOND, d.TimeLogStamp, tl.TimeLogStamp)) <= 5
-    ORDER BY d.TimeLogStamp DESC
-) dl
+FROM DeviceLogs dl
 LEFT JOIN Personnels p
     ON p.IsDeleted = 0
-   AND p.AccessNumber = tl.AccessNumber
+   AND p.AccessNumber = dl.AccessNumber
 LEFT JOIN ZKDevices zk
     ON zk.IsDeleted = 0
    AND zk.SerialNumber = dl.DeviceSerialNumber
-WHERE tl.IsDeleted = 0
+WHERE dl.IsDeleted = 0
   AND (
-        tl.TimeLogStamp > {{0}}
-     OR (tl.TimeLogStamp = {{0}} AND tl.Id > {{1}})
+        dl.TimeLogStamp > {{0}}
+     OR (dl.TimeLogStamp = {{0}} AND dl.Id > {{1}})
   )
-ORDER BY tl.TimeLogStamp ASC, tl.Id ASC;";
+ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
 
         var rows = await db.TurnstileLogRows
             .FromSqlRaw(sql, _sinceUtc, _lastId)
