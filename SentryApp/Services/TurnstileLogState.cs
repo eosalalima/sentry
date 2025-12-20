@@ -2,6 +2,8 @@ namespace SentryApp.Services;
 
 public sealed class TurnstileLogState : IDisposable
 {
+    private const int MaxQueueItems = 24;
+
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
     private CancellationTokenSource? _spotlightCts;
@@ -44,6 +46,8 @@ public sealed class TurnstileLogState : IDisposable
                     Entry = Spotlight,
                     ExpiresAtUtc = DateTimeOffset.UtcNow.AddSeconds(10)
                 });
+
+                TrimQueue();
             }
 
             Spotlight = entry;
@@ -75,6 +79,8 @@ public sealed class TurnstileLogState : IDisposable
                     ExpiresAtUtc = DateTimeOffset.UtcNow.AddSeconds(10)
                 });
                 Spotlight = null;
+
+                TrimQueue();
             }
         }
 
@@ -94,6 +100,12 @@ public sealed class TurnstileLogState : IDisposable
 
         if (changed)
             Changed?.Invoke();
+    }
+
+    private void TrimQueue()
+    {
+        while (_queue.Count > MaxQueueItems)
+            _queue.RemoveAt(_queue.Count - 1);
     }
 
     public void Dispose()
