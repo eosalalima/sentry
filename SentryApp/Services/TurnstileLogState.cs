@@ -87,12 +87,6 @@ public sealed class TurnstileLogState : IDisposable
             _queue.RemoveAt(_queue.Count - 1);
     }
 
-    private void TrimQueue()
-    {
-        while (_queue.Count > MaxQueueItems)
-            _queue.RemoveAt(_queue.Count - 1);
-    }
-
     public void Dispose()
     {
         _spotlightCts?.Cancel();
