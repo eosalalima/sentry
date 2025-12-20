@@ -2,10 +2,11 @@ namespace SentryApp.Services;
 
 public sealed class TurnstileLogState : IDisposable
 {
+    private const int MaxQueueItems = 24;
+
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
     private CancellationTokenSource? _spotlightCts;
-    private readonly Timer _sweepTimer;
 
     public event Action? Changed;
 
@@ -22,9 +23,6 @@ public sealed class TurnstileLogState : IDisposable
 
     public TurnstileLogState()
     {
-        _sweepTimer = new Timer(_ => SweepExpired(), null,
-            dueTime: TimeSpan.FromMilliseconds(250),
-            period: TimeSpan.FromMilliseconds(250));
     }
 
     public void Push(TurnstileLogEntry entry)
@@ -41,9 +39,10 @@ public sealed class TurnstileLogState : IDisposable
             {
                 _queue.Insert(0, new TurnstileQueueItem
                 {
-                    Entry = Spotlight,
-                    ExpiresAtUtc = DateTimeOffset.UtcNow.AddSeconds(10)
+                    Entry = Spotlight
                 });
+
+                TrimQueue();
             }
 
             Spotlight = entry;
@@ -71,35 +70,26 @@ public sealed class TurnstileLogState : IDisposable
             {
                 _queue.Insert(0, new TurnstileQueueItem
                 {
-                    Entry = Spotlight,
-                    ExpiresAtUtc = DateTimeOffset.UtcNow.AddSeconds(10)
+                    Entry = Spotlight
                 });
                 Spotlight = null;
+
+                TrimQueue();
             }
         }
 
         Changed?.Invoke();
     }
 
-    private void SweepExpired()
+    private void TrimQueue()
     {
-        bool changed;
-        lock (_lock)
-        {
-            var now = DateTimeOffset.UtcNow;
-            var before = _queue.Count;
-            _queue.RemoveAll(x => x.ExpiresAtUtc <= now);
-            changed = before != _queue.Count;
-        }
-
-        if (changed)
-            Changed?.Invoke();
+        while (_queue.Count > MaxQueueItems)
+            _queue.RemoveAt(_queue.Count - 1);
     }
 
     public void Dispose()
     {
         _spotlightCts?.Cancel();
         _spotlightCts?.Dispose();
-        _sweepTimer.Dispose();
     }
 }
