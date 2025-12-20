@@ -1,3 +1,5 @@
+using System;
+
 namespace SentryApp.Services;
 
 public interface IPhotoUrlBuilder
@@ -12,8 +14,7 @@ public sealed class PhotoUrlBuilder : IPhotoUrlBuilder
         if (string.IsNullOrWhiteSpace(photoId))
             return "/img/avatar-placeholder.svg";
 
-        // Example convention: wwwroot/photos/{photoId}.jpg
-        // return $"/photos/{Uri.EscapeDataString(photoId)}.jpg";
-        return "/img/avatar-placeholder.svg";
+        // Serve via the /photos endpoint so the server can resolve files from the configured directory.
+        return $"/photos/{Uri.EscapeDataString(photoId)}";
     }
 }
