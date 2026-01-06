@@ -267,3 +267,4 @@ F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\ne
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\SentryApp.csproj.Up2Date
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\SentryApp.sourcelink.json
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\og32ge4hnp-{0}-mcpfba3uoy-mcpfba3uoy.gz
+F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\7ccl666qnt-{0}-8ehsk1v8yg-8ehsk1v8yg.gz

@@ -75,12 +75,14 @@
                         <div class="input-group">
                             <input class="form-control" id="photosPath" type="text" @bind="_photosPath"
                                 placeholder="C:\Photos\..." />
-                            <button class="btn btn-outline-secondary" type="button" @onclick="BrowsePhotosPathAsync">Browse</button>
+                            <button class="btn btn-outline-secondary" type="button"
+                                @onclick="BrowsePhotosPathAsync">Browse</button>
                         </div>
                     </div>
                 </div>
 
                 <div class="modal-footer">
+                    <button class="btn btn-success me-auto" type="button">Run Service</button>
                     <button class="btn btn-primary" type="button" @onclick="SaveSettingsAsync">Save</button>
                     <button class="btn btn-secondary" type="button" @onclick="CloseSettings">Close</button>
                 </div>
@@ -131,7 +133,9 @@
         .OrderBy(d => d.Name)
         .ToListAsync();
 
-        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber != _selectedDeviceSerial)))
+        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber
+        !=
+        _selectedDeviceSerial)))
             _selectedDeviceSerial = _devices[0].SerialNumber;
     }
 
@@ -198,7 +202,9 @@
             Console.Error.WriteLine($"Failed to load settings: {ex}");
         }
 
-        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber != _selectedDeviceSerial)))
+        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber
+        !=
+        _selectedDeviceSerial)))
             _selectedDeviceSerial = _devices[0].SerialNumber;
     }
 
