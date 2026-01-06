@@ -1,0 +1,6 @@
+{
+  "ConnectionString": "Server=EOS-NITRO\\SQLSERVER2023;Database=Access Control;Integrated Security=True;TrustServerCertificate=True;",
+  "IsLiveMode": true,
+  "SelectedDeviceSerial": "LSR232760014",
+  "PhotosPath": "Photos"
+}
