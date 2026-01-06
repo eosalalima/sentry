@@ -237,27 +237,27 @@
                 var json = await File.ReadAllTextAsync(appSettingsPath);
                 if (JsonNode.Parse(json) is JsonObject root)
                 {
-                    if (root["ConnectionStrings"] is JsonObject cs && cs["AccessControlDb"] is JsonNode csNode && csNode.TryGetValue<string>(out var connectionString))
+                    if (root["ConnectionStrings"] is JsonObject cs && TryReadJsonValue(cs["AccessControlDb"], out string? connectionString))
                         _connectionString = connectionString;
 
-                    if (root["PhotoOptions"] is JsonObject photoOptions && photoOptions["PhotoDirectory"] is JsonNode photoNode && photoNode.TryGetValue<string>(out var photoDirectory))
+                    if (root["PhotoOptions"] is JsonObject photoOptions && TryReadJsonValue(photoOptions["PhotoDirectory"], out string? photoDirectory))
                         _photosPath = photoDirectory;
 
-                    if (root["IsLiveMode"] is JsonNode liveNode && liveNode.TryGetValue<bool>(out var liveMode))
+                    if (TryReadJsonValue(root["IsLiveMode"], out bool liveMode))
                         _isLiveMode = liveMode;
 
-                    if (root["SelectedDeviceSerial"] is JsonNode deviceNode && deviceNode.TryGetValue<string>(out var deviceSerial))
+                    if (TryReadJsonValue(root["SelectedDeviceSerial"], out string? deviceSerial))
                         _selectedDeviceSerial = deviceSerial;
 
                     if (root["TurnstilePolling"] is JsonObject turnstilePolling)
                     {
-                        if (turnstilePolling["IntervalsMs"] is JsonNode intervalNode && intervalNode.TryGetValue<int>(out var interval))
+                        if (TryReadJsonValue(turnstilePolling["IntervalsMs"], out int interval))
                             _pollingIntervalMs = interval;
 
-                        if (turnstilePolling["LookbackSecondsOntart"] is JsonNode lookbackNode && lookbackNode.TryGetValue<int>(out var lookback))
+                        if (TryReadJsonValue(turnstilePolling["LookbackSecondsOntart"], out int lookback))
                             _lookbackSecondsOnStart = lookback;
 
-                        if (turnstilePolling["MaxRowsPerPoll"] is JsonNode maxRowsNode && maxRowsNode.TryGetValue<int>(out var maxRows))
+                        if (TryReadJsonValue(turnstilePolling["MaxRowsPerPoll"], out int maxRows))
                             _maxRowsPerPoll = maxRows;
                     }
                 }
@@ -326,5 +326,24 @@
         {
             Console.Error.WriteLine($"Failed to update appsettings.json: {ex}");
         }
+    }
+
+    private static bool TryReadJsonValue<T>(JsonNode? node, out T value)
+    {
+        if (node is JsonValue jsonValue)
+        {
+            try
+            {
+                value = jsonValue.GetValue<T>();
+                return true;
+            }
+            catch
+            {
+                // ignored - will fall through to default
+            }
+        }
+
+        value = default!;
+        return false;
     }
 }
