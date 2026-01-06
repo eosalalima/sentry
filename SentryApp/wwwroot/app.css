@@ -63,13 +63,23 @@
 }
 
 .mon-live-btn{
-  background:var(--blue);
-  color:#fff;
-  border:none;
   border-radius:6px;
   padding:8px 14px;
   font-weight:600;
   cursor:pointer;
+}
+
+.mon-live-btn:not(.btn){
+  background:var(--blue);
+  color:#fff;
+  border-radius:6px;
+  padding:8px 14px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.mon-live-btn.btn-warning{
+  color:#000;
 }
 
 .mon-body{

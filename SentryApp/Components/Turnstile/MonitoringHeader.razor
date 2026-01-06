@@ -12,13 +12,13 @@
     <div class="mon-brand">
         <img class="mon-logo" src="/img/logo.png" alt="Logo" />
         <div>
-            <div class="mon-title">GATE 1 MONITORING</div>
+            <div class="mon-title">@MonitoringTitle</div>
             <div class="mon-subtitle"><strong>DR. GLORIA D. LACSON FOUNDATION COLLEGES</strong></div>
         </div>
     </div>
 
     <div>
-        <button class="mon-live-btn" type="button">Live Feed</button>
+        <button class="@LiveButtonClass" type="button">@LiveButtonLabel</button>
         <button class="btn btn-link" type="button" @onclick="OpenSettingsAsync">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-gear"
                 viewBox="0 0 16 16">
@@ -63,7 +63,7 @@
                     }
                     else
                     {
-                        <option value="1">All Devices</option>
+                        <option value="@AllDevicesValue">All Devices</option>
                         @foreach (var device in _devices)
                         {
                             <option value="@device.SerialNumber">@device.Name</option>
@@ -125,6 +125,8 @@
     [Inject]
     private TurnstilePollingController PollingController { get; set; } = default!;
 
+    private const string AllDevicesValue = "1";
+
     private bool _showSettingsModal;
     private string _connectionString = string.Empty;
     private bool _isLiveMode = true;
@@ -164,8 +166,13 @@
             .OrderBy(d => d.Name)
             .ToListAsync();
 
-        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber != _selectedDeviceSerial)))
-            _selectedDeviceSerial = _devices[0].SerialNumber;
+        if (_devices.Count > 0)
+        {
+            if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
+                _selectedDeviceSerial = _devices[0].SerialNumber;
+            else if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
+                _selectedDeviceSerial = _devices[0].SerialNumber;
+        }
     }
 
     private async Task BrowsePhotosPathAsync()
@@ -268,8 +275,13 @@
             Console.Error.WriteLine($"Failed to load settings: {ex}");
         }
 
-        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber != _selectedDeviceSerial)))
-            _selectedDeviceSerial = _devices[0].SerialNumber;
+        if (_devices.Count > 0)
+        {
+            if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
+                _selectedDeviceSerial = _devices[0].SerialNumber;
+            else if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
+                _selectedDeviceSerial = _devices[0].SerialNumber;
+        }
     }
 
     private void OnPollingStatusChanged(bool isActive)
@@ -345,5 +357,38 @@
 
         value = default!;
         return false;
+    }
+
+    private string LiveButtonLabel => !_isPollingActive
+        ? "Halted"
+        : _isLiveMode ? "Live Feed" : "Demo";
+
+    private string LiveButtonClass
+    {
+        get
+        {
+            if (!_isPollingActive)
+                return "mon-live-btn btn btn-secondary";
+
+            if (_isLiveMode)
+                return "mon-live-btn";
+
+            return "mon-live-btn btn btn-warning";
+        }
+    }
+
+    private string MonitoringTitle
+    {
+        get
+        {
+            if (_selectedDeviceSerial == AllDevicesValue)
+                return "ALL DEVICES MONITORING";
+
+            var deviceName = _devices.FirstOrDefault(d => d.SerialNumber == _selectedDeviceSerial)?.Name;
+            if (!string.IsNullOrWhiteSpace(deviceName))
+                return $"{deviceName.ToUpperInvariant()} MONITORING";
+
+            return "GATE 1 MONITORING";
+        }
     }
 }
