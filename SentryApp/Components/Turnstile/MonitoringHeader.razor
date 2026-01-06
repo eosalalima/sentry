@@ -1,3 +1,7 @@
+@using Microsoft.EntityFrameworkCore
+@using SentryApp.Data
+@using SentryApp.Data.Query
+
 <div class="mon-header">
     <div class="mon-brand">
         <img class="mon-logo" src="/img/logo.png" alt="Logo" />
@@ -31,7 +35,33 @@
                     <button type="button" class="btn-close" aria-label="Close" @onclick="CloseSettings"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Adjust monitoring preferences or system options.</p>
+                    <div class="mb-3">
+                        <label class="form-label" for="connectionString">Database connection string</label>
+                        <input class="form-control" id="connectionString" type="text" @bind="_connectionString" placeholder="Server=...;Database=...;" />
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" id="liveMode" type="checkbox" role="switch" @bind="_isLiveMode" />
+                        <label class="form-check-label" for="liveMode">Live mode</label>
+                        <div class="form-text">Toggle off to switch to demo mode.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="deviceSelect">Device to monitor</label>
+                        <select class="form-select" id="deviceSelect" @bind="_selectedDeviceSerial">
+                            @if (_devices.Count == 0)
+                            {
+                                <option disabled value="">No devices available</option>
+                            }
+                            else
+                            {
+                                @foreach (var device in _devices)
+                                {
+                                    <option value="@device.SerialNumber">@device.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" @onclick="CloseSettings">Close</button>
@@ -43,9 +73,29 @@
 }
 
 @code {
+    [Inject]
+    private IDbContextFactory<AccessControlDbContext> DbFactory { get; set; } = default!;
+
     private bool _showSettingsModal;
+    private string _connectionString = string.Empty;
+    private bool _isLiveMode = true;
+    private string _selectedDeviceSerial = string.Empty;
+    private List<ZkDevice> _devices = new();
 
     private void OpenSettings() => _showSettingsModal = true;
 
     private void CloseSettings() => _showSettingsModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _devices = await db.ZkDevices
+            .AsNoTracking()
+            .OrderBy(d => d.Name)
+            .ToListAsync();
+
+        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) && _devices.Count > 0)
+            _selectedDeviceSerial = _devices[0].SerialNumber;
+    }
 }
