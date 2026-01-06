@@ -5,6 +5,8 @@
 @using System.Text.Json.Nodes
 @using SentryApp.Data
 @using SentryApp.Data.Query
+@using SentryApp.Services
+@implements IDisposable
 
 <div class="mon-header">
     <div class="mon-brand">
@@ -39,53 +41,68 @@
                     <button type="button" class="btn-close" aria-label="Close" @onclick="CloseSettings"></button>
                 </div>
 
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label" for="connectionString">Database connection string</label>
-                        <input class="form-control" id="connectionString" type="text" @bind="_connectionString"
-                            placeholder="Server=...;Database=...;" />
-                    </div>
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label" for="connectionString">Database connection string</label>
+                <input class="form-control" id="connectionString" type="text" @bind="_connectionString"
+                    placeholder="Server=...;Database=...;" disabled="@_isPollingActive" />
+            </div>
 
-                    <div class="form-check form-switch mt-3 mb-3">
-                        <input class="form-check-input" id="liveMode" type="checkbox" role="switch" @bind="_isLiveMode" />
-                        <label class="form-check-label" for="liveMode">Live mode</label>
-                        <div class="form-text">Toggle off to switch to demo mode.</div>
-                    </div>
+            <div class="form-check form-switch mt-3 mb-3">
+                <input class="form-check-input" id="liveMode" type="checkbox" role="switch" @bind="_isLiveMode" disabled="@_isPollingActive" />
+                <label class="form-check-label" for="liveMode">Live mode</label>
+                <div class="form-text">Toggle off to switch to demo mode.</div>
+            </div>
 
-                    <div class="mt-3 mb-3">
-                        <label class="form-label" for="deviceSelect">Device to monitor</label>
-                        <select class="form-select" id="deviceSelect" @bind="_selectedDeviceSerial">
-                            @if (_devices.Count == 0)
-                            {
-                                <option disabled value="">No devices available</option>
-                            }
-                            else
-                            {
-                                <option value="1">All Devices</option>
-                                @foreach (var device in _devices)
-                                {
-                                    <option value="@device.SerialNumber">@device.Name</option>
-                                }
-                            }
-                        </select>
-                    </div>
+            <div class="mt-3 mb-3">
+                <label class="form-label" for="deviceSelect">Device to monitor</label>
+                <select class="form-select" id="deviceSelect" @bind="_selectedDeviceSerial" disabled="@_isPollingActive">
+                    @if (_devices.Count == 0)
+                    {
+                        <option disabled value="">No devices available</option>
+                    }
+                    else
+                    {
+                        <option value="1">All Devices</option>
+                        @foreach (var device in _devices)
+                        {
+                            <option value="@device.SerialNumber">@device.Name</option>
+                        }
+                    }
+                </select>
+            </div>
 
-                    <div class="mt-3 mb-3">
-                        <label class="form-label" for="photosPath">Photos path</label>
-                        <div class="input-group">
-                            <input class="form-control" id="photosPath" type="text" @bind="_photosPath"
-                                placeholder="C:\Photos\..." />
-                            <button class="btn btn-outline-secondary" type="button"
-                                @onclick="BrowsePhotosPathAsync">Browse</button>
-                        </div>
-                    </div>
+            <div class="mt-3 mb-3">
+                <label class="form-label" for="photosPath">Photos path</label>
+                <div class="input-group">
+                    <input class="form-control" id="photosPath" type="text" @bind="_photosPath"
+                        placeholder="C:\\Photos\\..." disabled="@_isPollingActive" />
+                    <button class="btn btn-outline-secondary" type="button"
+                        @onclick="BrowsePhotosPathAsync" disabled="@_isPollingActive">Browse</button>
                 </div>
+            </div>
 
-                <div class="modal-footer">
-                    <button class="btn btn-success me-auto" type="button">Run Service</button>
-                    <button class="btn btn-primary" type="button" @onclick="SaveSettingsAsync">Save</button>
-                    <button class="btn btn-secondary" type="button" @onclick="CloseSettings">Close</button>
-                </div>
+            <div class="mt-3 mb-3">
+                <label class="form-label" for="pollInterval">Polling interval (ms)</label>
+                <input class="form-control" id="pollInterval" type="number" min="1" step="1" @bind-value="_pollingIntervalMs" @bind-value:event="oninput" disabled="@_isPollingActive" />
+            </div>
+
+            <div class="mt-3 mb-3">
+                <label class="form-label" for="lookbackSeconds">Lookback seconds on start</label>
+                <input class="form-control" id="lookbackSeconds" type="number" min="0" step="1" @bind-value="_lookbackSecondsOnStart" @bind-value:event="oninput" disabled="@_isPollingActive" />
+            </div>
+
+            <div class="mt-3 mb-3">
+                <label class="form-label" for="maxRowsPerPoll">Max rows per poll</label>
+                <input class="form-control" id="maxRowsPerPoll" type="number" min="1" step="1" @bind-value="_maxRowsPerPoll" @bind-value:event="oninput" disabled="@_isPollingActive" />
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn @(_isPollingActive ? "btn-danger" : "btn-success") me-auto" type="button" @onclick="TogglePollingServiceAsync">@(_isPollingActive ? "Stop Service" : "Run Service")</button>
+            <button class="btn btn-primary" type="button" @onclick="SaveSettingsAsync" disabled="@_isPollingActive">Save</button>
+            <button class="btn btn-secondary" type="button" @onclick="CloseSettings">Close</button>
+        </div>
             </div>
         </div>
     </div>
@@ -105,17 +122,23 @@
     [Inject]
     private IWebHostEnvironment Environment { get; set; } = default!;
 
-    private const string SettingsFileName = "settings.json";
+    [Inject]
+    private TurnstilePollingController PollingController { get; set; } = default!;
+
     private bool _showSettingsModal;
     private string _connectionString = string.Empty;
     private bool _isLiveMode = true;
     private string _selectedDeviceSerial = string.Empty;
     private string _photosPath = string.Empty;
+    private int _pollingIntervalMs = 500;
+    private int _lookbackSecondsOnStart = 3;
+    private int _maxRowsPerPoll = 20;
+    private bool _isPollingActive;
     private List<ZkDevice> _devices = new();
 
     private async Task OpenSettingsAsync()
     {
-        await LoadSettingsFromFileAsync();
+        await LoadSettingsAsync();
         _showSettingsModal = true;
     }
 
@@ -123,19 +146,25 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _isPollingActive = PollingController.IsActive;
+        PollingController.StatusChanged += OnPollingStatusChanged;
+
         _connectionString = Configuration.GetConnectionString("AccessControlDb") ?? string.Empty;
         _photosPath = Configuration.GetSection("PhotoOptions").GetValue<string>("PhotoDirectory") ?? string.Empty;
+        _isLiveMode = Configuration.GetValue<bool>("IsLiveMode");
+        _selectedDeviceSerial = Configuration.GetValue<string>("SelectedDeviceSerial") ?? string.Empty;
+        _pollingIntervalMs = Configuration.GetValue("TurnstilePolling:IntervalsMs", Configuration.GetValue("TurnstilePolling:IntervalMs", 500));
+        _lookbackSecondsOnStart = Configuration.GetValue("TurnstilePolling:LookbackSecondsOntart", Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", 3));
+        _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", 20);
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
         _devices = await db.ZkDevices
-        .AsNoTracking()
-        .OrderBy(d => d.Name)
-        .ToListAsync();
+            .AsNoTracking()
+            .OrderBy(d => d.Name)
+            .ToListAsync();
 
-        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber
-        !=
-        _selectedDeviceSerial)))
+        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber != _selectedDeviceSerial)))
             _selectedDeviceSerial = _devices[0].SerialNumber;
     }
 
@@ -153,20 +182,32 @@
         }
     }
 
+    private async Task TogglePollingServiceAsync()
+    {
+        if (_isPollingActive)
+        {
+            PollingController.TryStop();
+        }
+        else
+        {
+            PollingController.TryStart();
+        }
+
+        _isPollingActive = PollingController.IsActive;
+    }
+
     private async Task SaveSettingsAsync()
     {
         try
         {
-            var settings = new MonitoringSettings
-            {
-                ConnectionString = _connectionString,
-                IsLiveMode = _isLiveMode,
-                SelectedDeviceSerial = _selectedDeviceSerial,
-                PhotosPath = _photosPath
-            };
+            if (_isPollingActive)
+                return;
 
-            await SaveSettingsToFileAsync(settings);
-            await UpdateAppSettingsConnectionStringAsync(_connectionString);
+            _pollingIntervalMs = Math.Max(1, _pollingIntervalMs);
+            _lookbackSecondsOnStart = Math.Max(0, _lookbackSecondsOnStart);
+            _maxRowsPerPoll = Math.Max(1, _maxRowsPerPoll);
+
+            await UpdateAppSettingsAsync();
 
             _showSettingsModal = false;
         }
@@ -176,51 +217,73 @@
         }
     }
 
-    private async Task LoadSettingsFromFileAsync()
+    private async Task LoadSettingsAsync()
     {
-        var settingsPath = GetSettingsFilePath();
-        if (!File.Exists(settingsPath))
-            return;
+        _isPollingActive = PollingController.IsActive;
 
         try
         {
-            var json = await File.ReadAllTextAsync(settingsPath);
-            var settings = JsonSerializer.Deserialize<MonitoringSettings>(json);
-            if (settings is null)
-                return;
+            _connectionString = Configuration.GetConnectionString("AccessControlDb") ?? _connectionString;
+            _photosPath = Configuration.GetSection("PhotoOptions").GetValue<string>("PhotoDirectory") ?? _photosPath;
+            _isLiveMode = Configuration.GetValue("IsLiveMode", _isLiveMode);
+            _selectedDeviceSerial = Configuration.GetValue<string>("SelectedDeviceSerial") ?? _selectedDeviceSerial;
+            _pollingIntervalMs = Configuration.GetValue("TurnstilePolling:IntervalsMs", Configuration.GetValue("TurnstilePolling:IntervalMs", _pollingIntervalMs));
+            _lookbackSecondsOnStart = Configuration.GetValue("TurnstilePolling:LookbackSecondsOntart", Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", _lookbackSecondsOnStart));
+            _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
 
-            _connectionString = settings.ConnectionString ?? _connectionString;
-            _isLiveMode = settings.IsLiveMode ?? _isLiveMode;
+            var appSettingsPath = Path.Combine(Environment.ContentRootPath, "appsettings.json");
+            if (File.Exists(appSettingsPath))
+            {
+                var json = await File.ReadAllTextAsync(appSettingsPath);
+                if (JsonNode.Parse(json) is JsonObject root)
+                {
+                    if (root["ConnectionStrings"] is JsonObject cs && cs["AccessControlDb"] is JsonNode csNode && csNode.TryGetValue<string>(out var connectionString))
+                        _connectionString = connectionString;
 
-            if (!string.IsNullOrWhiteSpace(settings.SelectedDeviceSerial))
-                _selectedDeviceSerial = settings.SelectedDeviceSerial;
+                    if (root["PhotoOptions"] is JsonObject photoOptions && photoOptions["PhotoDirectory"] is JsonNode photoNode && photoNode.TryGetValue<string>(out var photoDirectory))
+                        _photosPath = photoDirectory;
 
-            _photosPath = settings.PhotosPath ?? _photosPath;
+                    if (root["IsLiveMode"] is JsonNode liveNode && liveNode.TryGetValue<bool>(out var liveMode))
+                        _isLiveMode = liveMode;
+
+                    if (root["SelectedDeviceSerial"] is JsonNode deviceNode && deviceNode.TryGetValue<string>(out var deviceSerial))
+                        _selectedDeviceSerial = deviceSerial;
+
+                    if (root["TurnstilePolling"] is JsonObject turnstilePolling)
+                    {
+                        if (turnstilePolling["IntervalsMs"] is JsonNode intervalNode && intervalNode.TryGetValue<int>(out var interval))
+                            _pollingIntervalMs = interval;
+
+                        if (turnstilePolling["LookbackSecondsOntart"] is JsonNode lookbackNode && lookbackNode.TryGetValue<int>(out var lookback))
+                            _lookbackSecondsOnStart = lookback;
+
+                        if (turnstilePolling["MaxRowsPerPoll"] is JsonNode maxRowsNode && maxRowsNode.TryGetValue<int>(out var maxRows))
+                            _maxRowsPerPoll = maxRows;
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Failed to load settings: {ex}");
         }
 
-        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber
-        !=
-        _selectedDeviceSerial)))
+        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber != _selectedDeviceSerial)))
             _selectedDeviceSerial = _devices[0].SerialNumber;
     }
 
-    private async Task SaveSettingsToFileAsync(MonitoringSettings settings)
+    private void OnPollingStatusChanged(bool isActive)
     {
-        var settingsPath = GetSettingsFilePath();
-
-        var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
-
-        await File.WriteAllTextAsync(settingsPath, json);
+        _isPollingActive = isActive;
+        InvokeAsync(StateHasChanged);
     }
 
-    private async Task UpdateAppSettingsConnectionStringAsync(string connectionString)
+    public void Dispose()
+    {
+        PollingController.StatusChanged -= OnPollingStatusChanged;
+    }
+
+    private async Task UpdateAppSettingsAsync()
     {
         var appSettingsPath = Path.Combine(Environment.ContentRootPath, "appsettings.json");
         if (!File.Exists(appSettingsPath))
@@ -237,7 +300,22 @@
                 root["ConnectionStrings"] = connectionStrings;
             }
 
-            connectionStrings["AccessControlDb"] = connectionString;
+            connectionStrings["AccessControlDb"] = _connectionString;
+
+            root["PhotoOptions"] ??= new JsonObject();
+            if (root["PhotoOptions"] is JsonObject photoOptions)
+                photoOptions["PhotoDirectory"] = _photosPath;
+
+            root["IsLiveMode"] = _isLiveMode;
+            root["SelectedDeviceSerial"] = _selectedDeviceSerial;
+
+            root["TurnstilePolling"] ??= new JsonObject();
+            if (root["TurnstilePolling"] is JsonObject turnstilePolling)
+            {
+                turnstilePolling["IntervalsMs"] = _pollingIntervalMs;
+                turnstilePolling["LookbackSecondsOntart"] = _lookbackSecondsOnStart;
+                turnstilePolling["MaxRowsPerPoll"] = _maxRowsPerPoll;
+            }
 
             await File.WriteAllTextAsync(appSettingsPath, root.ToJsonString(new JsonSerializerOptions
             {
@@ -248,15 +326,5 @@
         {
             Console.Error.WriteLine($"Failed to update appsettings.json: {ex}");
         }
-    }
-
-    private string GetSettingsFilePath() => Path.Combine(Environment.ContentRootPath, SettingsFileName);
-
-    private sealed class MonitoringSettings
-    {
-        public string? ConnectionString { get; set; }
-        public bool? IsLiveMode { get; set; }
-        public string? SelectedDeviceSerial { get; set; }
-        public string? PhotosPath { get; set; }
     }
 }
