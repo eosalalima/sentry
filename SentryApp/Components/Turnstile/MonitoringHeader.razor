@@ -28,25 +28,27 @@
 @if (_showSettingsModal)
 {
     <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Monitoring Settings</h5>
                     <button type="button" class="btn-close" aria-label="Close" @onclick="CloseSettings"></button>
                 </div>
+
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label" for="connectionString">Database connection string</label>
-                        <input class="form-control" id="connectionString" type="text" @bind="_connectionString" placeholder="Server=...;Database=...;" />
+                        <input class="form-control" id="connectionString" type="text" @bind="_connectionString"
+                            placeholder="Server=...;Database=...;" />
                     </div>
 
-                    <div class="form-check form-switch mb-3">
+                    <div class="form-check form-switch mt-3 mb-3">
                         <input class="form-check-input" id="liveMode" type="checkbox" role="switch" @bind="_isLiveMode" />
                         <label class="form-check-label" for="liveMode">Live mode</label>
                         <div class="form-text">Toggle off to switch to demo mode.</div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mt-3 mb-3">
                         <label class="form-label" for="deviceSelect">Device to monitor</label>
                         <select class="form-select" id="deviceSelect" @bind="_selectedDeviceSerial">
                             @if (_devices.Count == 0)
@@ -55,6 +57,7 @@
                             }
                             else
                             {
+                                <option value="1">All Devices</option>
                                 @foreach (var device in _devices)
                                 {
                                     <option value="@device.SerialNumber">@device.Name</option>
@@ -62,8 +65,19 @@
                             }
                         </select>
                     </div>
+
+                    <div class="mt-3 mb-3">
+                        <label class="form-label" for="photosPath">Photos path</label>
+                        <div class="input-group">
+                            <input class="form-control" id="photosPath" type="text" @bind="_photosPath"
+                                placeholder="C:\Photos\..." />
+                            <button class="btn btn-outline-secondary" type="button">Browse</button>
+                        </div>
+                    </div>
                 </div>
+
                 <div class="modal-footer">
+                    <button class="btn btn-primary" type="button">Save</button>
                     <button class="btn btn-secondary" type="button" @onclick="CloseSettings">Close</button>
                 </div>
             </div>
@@ -80,6 +94,7 @@
     private string _connectionString = string.Empty;
     private bool _isLiveMode = true;
     private string _selectedDeviceSerial = string.Empty;
+    private string _photosPath = string.Empty;
     private List<ZkDevice> _devices = new();
 
     private void OpenSettings() => _showSettingsModal = true;
@@ -91,9 +106,9 @@
         await using var db = await DbFactory.CreateDbContextAsync();
 
         _devices = await db.ZkDevices
-            .AsNoTracking()
-            .OrderBy(d => d.Name)
-            .ToListAsync();
+        .AsNoTracking()
+        .OrderBy(d => d.Name)
+        .ToListAsync();
 
         if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) && _devices.Count > 0)
             _selectedDeviceSerial = _devices[0].SerialNumber;
