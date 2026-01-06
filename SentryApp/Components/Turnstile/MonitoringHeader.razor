@@ -9,7 +9,7 @@
 
     <div>
         <button class="mon-live-btn" type="button">Live Feed</button>
-        <button class="btn btn-link" type="button">
+        <button class="btn btn-link" type="button" @onclick="OpenSettings">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-gear"
                 viewBox="0 0 16 16">
                 <path
@@ -20,3 +20,32 @@
         </button>
     </div>
 </div>
+
+@if (_showSettingsModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Monitoring Settings</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseSettings"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Adjust monitoring preferences or system options.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" @onclick="CloseSettings">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show" @onclick="CloseSettings"></div>
+}
+
+@code {
+    private bool _showSettingsModal;
+
+    private void OpenSettings() => _showSettingsModal = true;
+
+    private void CloseSettings() => _showSettingsModal = false;
+}
