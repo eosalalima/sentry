@@ -1,4 +1,8 @@
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Configuration
+@using Microsoft.AspNetCore.Hosting
+@using System.Text.Json
+@using System.Text.Json.Nodes
 @using SentryApp.Data
 @using SentryApp.Data.Query
 
@@ -13,7 +17,7 @@
 
     <div>
         <button class="mon-live-btn" type="button">Live Feed</button>
-        <button class="btn btn-link" type="button" @onclick="OpenSettings">
+        <button class="btn btn-link" type="button" @onclick="OpenSettingsAsync">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-gear"
                 viewBox="0 0 16 16">
                 <path
@@ -71,13 +75,13 @@
                         <div class="input-group">
                             <input class="form-control" id="photosPath" type="text" @bind="_photosPath"
                                 placeholder="C:\Photos\..." />
-                            <button class="btn btn-outline-secondary" type="button">Browse</button>
+                            <button class="btn btn-outline-secondary" type="button" @onclick="BrowsePhotosPathAsync">Browse</button>
                         </div>
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-primary" type="button">Save</button>
+                    <button class="btn btn-primary" type="button" @onclick="SaveSettingsAsync">Save</button>
                     <button class="btn btn-secondary" type="button" @onclick="CloseSettings">Close</button>
                 </div>
             </div>
@@ -90,6 +94,16 @@
     [Inject]
     private IDbContextFactory<AccessControlDbContext> DbFactory { get; set; } = default!;
 
+    [Inject]
+    private IConfiguration Configuration { get; set; } = default!;
+
+    [Inject]
+    private IJSRuntime JsRuntime { get; set; } = default!;
+
+    [Inject]
+    private IWebHostEnvironment Environment { get; set; } = default!;
+
+    private const string SettingsFileName = "settings.json";
     private bool _showSettingsModal;
     private string _connectionString = string.Empty;
     private bool _isLiveMode = true;
@@ -97,12 +111,19 @@
     private string _photosPath = string.Empty;
     private List<ZkDevice> _devices = new();
 
-    private void OpenSettings() => _showSettingsModal = true;
+    private async Task OpenSettingsAsync()
+    {
+        await LoadSettingsFromFileAsync();
+        _showSettingsModal = true;
+    }
 
     private void CloseSettings() => _showSettingsModal = false;
 
     protected override async Task OnInitializedAsync()
     {
+        _connectionString = Configuration.GetConnectionString("AccessControlDb") ?? string.Empty;
+        _photosPath = Configuration.GetSection("PhotoOptions").GetValue<string>("PhotoDirectory") ?? string.Empty;
+
         await using var db = await DbFactory.CreateDbContextAsync();
 
         _devices = await db.ZkDevices
@@ -110,7 +131,126 @@
         .OrderBy(d => d.Name)
         .ToListAsync();
 
-        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) && _devices.Count > 0)
+        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber != _selectedDeviceSerial)))
             _selectedDeviceSerial = _devices[0].SerialNumber;
+    }
+
+    private async Task BrowsePhotosPathAsync()
+    {
+        try
+        {
+            var selectedPath = await JsRuntime.InvokeAsync<string>("sentryApp.selectFolder");
+            if (!string.IsNullOrWhiteSpace(selectedPath))
+                _photosPath = selectedPath;
+        }
+        catch (JSException)
+        {
+            Console.Error.WriteLine("Folder selection is not supported in this browser.");
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        try
+        {
+            var settings = new MonitoringSettings
+            {
+                ConnectionString = _connectionString,
+                IsLiveMode = _isLiveMode,
+                SelectedDeviceSerial = _selectedDeviceSerial,
+                PhotosPath = _photosPath
+            };
+
+            await SaveSettingsToFileAsync(settings);
+            await UpdateAppSettingsConnectionStringAsync(_connectionString);
+
+            _showSettingsModal = false;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to save settings: {ex}");
+        }
+    }
+
+    private async Task LoadSettingsFromFileAsync()
+    {
+        var settingsPath = GetSettingsFilePath();
+        if (!File.Exists(settingsPath))
+            return;
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(settingsPath);
+            var settings = JsonSerializer.Deserialize<MonitoringSettings>(json);
+            if (settings is null)
+                return;
+
+            _connectionString = settings.ConnectionString ?? _connectionString;
+            _isLiveMode = settings.IsLiveMode ?? _isLiveMode;
+
+            if (!string.IsNullOrWhiteSpace(settings.SelectedDeviceSerial))
+                _selectedDeviceSerial = settings.SelectedDeviceSerial;
+
+            _photosPath = settings.PhotosPath ?? _photosPath;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to load settings: {ex}");
+        }
+
+        if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber != _selectedDeviceSerial)))
+            _selectedDeviceSerial = _devices[0].SerialNumber;
+    }
+
+    private async Task SaveSettingsToFileAsync(MonitoringSettings settings)
+    {
+        var settingsPath = GetSettingsFilePath();
+
+        var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        await File.WriteAllTextAsync(settingsPath, json);
+    }
+
+    private async Task UpdateAppSettingsConnectionStringAsync(string connectionString)
+    {
+        var appSettingsPath = Path.Combine(Environment.ContentRootPath, "appsettings.json");
+        if (!File.Exists(appSettingsPath))
+            return;
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(appSettingsPath);
+            var root = JsonNode.Parse(json) as JsonObject ?? new JsonObject();
+
+            if (root["ConnectionStrings"] is not JsonObject connectionStrings)
+            {
+                connectionStrings = new JsonObject();
+                root["ConnectionStrings"] = connectionStrings;
+            }
+
+            connectionStrings["AccessControlDb"] = connectionString;
+
+            await File.WriteAllTextAsync(appSettingsPath, root.ToJsonString(new JsonSerializerOptions
+            {
+                WriteIndented = true
+            }));
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to update appsettings.json: {ex}");
+        }
+    }
+
+    private string GetSettingsFilePath() => Path.Combine(Environment.ContentRootPath, SettingsFileName);
+
+    private sealed class MonitoringSettings
+    {
+        public string? ConnectionString { get; set; }
+        public bool? IsLiveMode { get; set; }
+        public string? SelectedDeviceSerial { get; set; }
+        public string? PhotosPath { get; set; }
     }
 }
