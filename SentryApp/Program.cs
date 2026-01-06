@@ -19,6 +19,10 @@ builder.Services.Configure<PhotoOptions>(builder.Configuration.GetSection("Photo
 builder.Services.AddSingleton<IPhotoUrlBuilder, PhotoUrlBuilder>();
 builder.Services.AddHostedService<TurnstileLogPollingWorker>();
 
+var isLiveMode = builder.Configuration.GetValue<bool>("IsLiveMode");
+if (!isLiveMode)
+    builder.Services.AddHostedService<DemoDeviceLogGenerator>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

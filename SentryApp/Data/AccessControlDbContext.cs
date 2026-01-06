@@ -10,6 +10,7 @@ public sealed class AccessControlDbContext : DbContext
     // Keyless row used by our polling SQL
     public DbSet<TurnstileLogRow> TurnstileLogRows => Set<TurnstileLogRow>();
     public DbSet<ZkDevice> ZkDevices => Set<ZkDevice>();
+    public DbSet<Personnel> Personnels => Set<Personnel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -23,6 +24,12 @@ public sealed class AccessControlDbContext : DbContext
         {
             b.HasNoKey();
             b.ToTable("ZKDevices");
+        });
+
+        modelBuilder.Entity<Personnel>(b =>
+        {
+            b.HasNoKey();
+            b.ToTable("Personnels");
         });
     }
 }
