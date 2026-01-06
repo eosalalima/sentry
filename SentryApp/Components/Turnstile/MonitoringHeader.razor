@@ -78,6 +78,26 @@
                             <button class="btn btn-outline-secondary" type="button" @onclick="BrowsePhotosPathAsync">Browse</button>
                         </div>
                     </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label" for="pollingInterval">Polling interval (ms)</label>
+                            <input class="form-control" id="pollingInterval" type="number" min="0" step="1"
+                                @bind="_pollingIntervalMs" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label" for="lookbackSeconds">Lookback seconds on start</label>
+                            <input class="form-control" id="lookbackSeconds" type="number" min="0" step="1"
+                                @bind="_lookbackSecondsOnStart" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label" for="maxRowsPerPoll">Max rows per poll</label>
+                            <input class="form-control" id="maxRowsPerPoll" type="number" min="1" step="1"
+                                @bind="_maxRowsPerPoll" />
+                        </div>
+                    </div>
                 </div>
 
                 <div class="modal-footer">
@@ -102,18 +122,19 @@
 
     [Inject]
     private IWebHostEnvironment Environment { get; set; } = default!;
-
-    private const string SettingsFileName = "settings.json";
     private bool _showSettingsModal;
     private string _connectionString = string.Empty;
     private bool _isLiveMode = true;
     private string _selectedDeviceSerial = string.Empty;
     private string _photosPath = string.Empty;
+    private int _pollingIntervalMs = 500;
+    private int _lookbackSecondsOnStart = 3;
+    private int _maxRowsPerPoll = 20;
     private List<ZkDevice> _devices = new();
 
     private async Task OpenSettingsAsync()
     {
-        await LoadSettingsFromFileAsync();
+        await LoadSettingsFromAppSettingsAsync();
         _showSettingsModal = true;
     }
 
@@ -121,8 +142,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _connectionString = Configuration.GetConnectionString("AccessControlDb") ?? string.Empty;
-        _photosPath = Configuration.GetSection("PhotoOptions").GetValue<string>("PhotoDirectory") ?? string.Empty;
+        await LoadSettingsFromAppSettingsAsync();
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
@@ -153,16 +173,7 @@
     {
         try
         {
-            var settings = new MonitoringSettings
-            {
-                ConnectionString = _connectionString,
-                IsLiveMode = _isLiveMode,
-                SelectedDeviceSerial = _selectedDeviceSerial,
-                PhotosPath = _photosPath
-            };
-
-            await SaveSettingsToFileAsync(settings);
-            await UpdateAppSettingsConnectionStringAsync(_connectionString);
+            await SaveSettingsToAppSettingsAsync();
 
             _showSettingsModal = false;
         }
@@ -172,58 +183,72 @@
         }
     }
 
-    private async Task LoadSettingsFromFileAsync()
+    private async Task LoadSettingsFromAppSettingsAsync()
     {
-        var settingsPath = GetSettingsFilePath();
-        if (!File.Exists(settingsPath))
-            return;
+        var appSettingsPath = Path.Combine(Environment.ContentRootPath, "appsettings.json");
+        JsonObject? root = null;
 
-        try
+        if (File.Exists(appSettingsPath))
         {
-            var json = await File.ReadAllTextAsync(settingsPath);
-            var settings = JsonSerializer.Deserialize<MonitoringSettings>(json);
-            if (settings is null)
-                return;
-
-            _connectionString = settings.ConnectionString ?? _connectionString;
-            _isLiveMode = settings.IsLiveMode ?? _isLiveMode;
-
-            if (!string.IsNullOrWhiteSpace(settings.SelectedDeviceSerial))
-                _selectedDeviceSerial = settings.SelectedDeviceSerial;
-
-            _photosPath = settings.PhotosPath ?? _photosPath;
+            try
+            {
+                var json = await File.ReadAllTextAsync(appSettingsPath);
+                root = JsonNode.Parse(json) as JsonObject;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Failed to read appsettings.json: {ex}");
+            }
         }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Failed to load settings: {ex}");
-        }
+
+        var connectionStrings = root?["ConnectionStrings"] as JsonObject;
+        _connectionString = ReadStringSetting(connectionStrings, "AccessControlDb")
+            ?? Configuration.GetConnectionString("AccessControlDb")
+            ?? _connectionString;
+
+        var photoOptions = root?["PhotoOptions"] as JsonObject;
+        _photosPath = ReadStringSetting(photoOptions, "PhotoDirectory")
+            ?? Configuration.GetSection("PhotoOptions").GetValue<string>("PhotoDirectory")
+            ?? _photosPath;
+
+        _isLiveMode = ReadBoolSetting(root, "IsLiveMode") ?? Configuration.GetValue("IsLiveMode", _isLiveMode);
+
+        var storedDeviceSerial = ReadStringSetting(root, "SelectedDeviceSerial");
+        if (!string.IsNullOrWhiteSpace(storedDeviceSerial))
+            _selectedDeviceSerial = storedDeviceSerial;
+
+        var turnstilePolling = root?["TurnstilePolling"] as JsonObject;
+        _pollingIntervalMs = ReadIntSetting(turnstilePolling, "IntervalsMs")
+            ?? ReadIntSetting(turnstilePolling, "IntervalMs")
+            ?? Configuration.GetValue("TurnstilePolling:IntervalsMs", Configuration.GetValue("TurnstilePolling:IntervalMs", _pollingIntervalMs));
+
+        _lookbackSecondsOnStart = ReadIntSetting(turnstilePolling, "LookbackSecondsOntart")
+            ?? ReadIntSetting(turnstilePolling, "LookbackSecondsOnStart")
+            ?? Configuration.GetValue("TurnstilePolling:LookbackSecondsOntart", Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", _lookbackSecondsOnStart));
+
+        _maxRowsPerPoll = ReadIntSetting(turnstilePolling, "MaxRowsPerPoll")
+            ?? Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
 
         if (_devices.Count > 0 && (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _devices.All(d => d.SerialNumber != _selectedDeviceSerial)))
             _selectedDeviceSerial = _devices[0].SerialNumber;
     }
 
-    private async Task SaveSettingsToFileAsync(MonitoringSettings settings)
-    {
-        var settingsPath = GetSettingsFilePath();
-
-        var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
-
-        await File.WriteAllTextAsync(settingsPath, json);
-    }
-
-    private async Task UpdateAppSettingsConnectionStringAsync(string connectionString)
+    private async Task SaveSettingsToAppSettingsAsync()
     {
         var appSettingsPath = Path.Combine(Environment.ContentRootPath, "appsettings.json");
-        if (!File.Exists(appSettingsPath))
-            return;
+        JsonObject root;
 
         try
         {
-            var json = await File.ReadAllTextAsync(appSettingsPath);
-            var root = JsonNode.Parse(json) as JsonObject ?? new JsonObject();
+            if (File.Exists(appSettingsPath))
+            {
+                var json = await File.ReadAllTextAsync(appSettingsPath);
+                root = JsonNode.Parse(json) as JsonObject ?? new JsonObject();
+            }
+            else
+            {
+                root = new JsonObject();
+            }
 
             if (root["ConnectionStrings"] is not JsonObject connectionStrings)
             {
@@ -231,7 +256,28 @@
                 root["ConnectionStrings"] = connectionStrings;
             }
 
-            connectionStrings["AccessControlDb"] = connectionString;
+            if (root["PhotoOptions"] is not JsonObject photoOptions)
+            {
+                photoOptions = new JsonObject();
+                root["PhotoOptions"] = photoOptions;
+            }
+
+            if (root["TurnstilePolling"] is not JsonObject turnstilePolling)
+            {
+                turnstilePolling = new JsonObject();
+                root["TurnstilePolling"] = turnstilePolling;
+            }
+
+            connectionStrings["AccessControlDb"] = _connectionString;
+            photoOptions["PhotoDirectory"] = _photosPath;
+            root["IsLiveMode"] = _isLiveMode;
+            root["SelectedDeviceSerial"] = _selectedDeviceSerial;
+
+            turnstilePolling["IntervalsMs"] = _pollingIntervalMs;
+            turnstilePolling["IntervalMs"] = _pollingIntervalMs; // backward compatibility
+            turnstilePolling["LookbackSecondsOntart"] = _lookbackSecondsOnStart;
+            turnstilePolling["LookbackSecondsOnStart"] = _lookbackSecondsOnStart; // backward compatibility
+            turnstilePolling["MaxRowsPerPoll"] = _maxRowsPerPoll;
 
             await File.WriteAllTextAsync(appSettingsPath, root.ToJsonString(new JsonSerializerOptions
             {
@@ -240,17 +286,37 @@
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to update appsettings.json: {ex}");
+            Console.Error.WriteLine($"Failed to save settings to appsettings.json: {ex}");
         }
     }
 
-    private string GetSettingsFilePath() => Path.Combine(Environment.ContentRootPath, SettingsFileName);
-
-    private sealed class MonitoringSettings
+    private static string? ReadStringSetting(JsonObject? root, string key)
     {
-        public string? ConnectionString { get; set; }
-        public bool? IsLiveMode { get; set; }
-        public string? SelectedDeviceSerial { get; set; }
-        public string? PhotosPath { get; set; }
+        if (root is null)
+            return null;
+
+        return root.TryGetPropertyValue(key, out var value)
+            ? value?.GetValue<string>()
+            : null;
+    }
+
+    private static bool? ReadBoolSetting(JsonObject? root, string key)
+    {
+        if (root is null)
+            return null;
+
+        return root.TryGetPropertyValue(key, out var value)
+            ? value?.GetValue<bool?>()
+            : null;
+    }
+
+    private static int? ReadIntSetting(JsonObject? root, string key)
+    {
+        if (root is null)
+            return null;
+
+        return root.TryGetPropertyValue(key, out var value)
+            ? value?.GetValue<int?>()
+            : null;
     }
 }
