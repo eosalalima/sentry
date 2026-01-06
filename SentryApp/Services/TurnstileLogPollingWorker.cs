@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SentryApp.Data;
 using SentryApp.Data.Query;
 
@@ -9,11 +10,14 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
     private readonly IDbContextFactory<AccessControlDbContext> _dbFactory;
     private readonly TurnstileLogState _state;
     private readonly IPhotoUrlBuilder _photoUrlBuilder;
+    private readonly TurnstilePollingController _controller;
+    private readonly IConfiguration _config;
     private readonly ILogger<TurnstileLogPollingWorker> _logger;
 
-    private readonly int _intervalMs;
-    private readonly int _lookbackSecondsOnStart;
-    private readonly int _maxRowsPerPoll;
+    private int _intervalMs;
+    private int _lookbackSecondsOnStart;
+    private int _maxRowsPerPoll;
+    private PeriodicTimer? _timer;
 
     private DateTimeOffset _sinceUtc;
     private readonly Dictionary<Guid, DateTimeOffset> _seen = new();
@@ -25,33 +29,54 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         IDbContextFactory<AccessControlDbContext> dbFactory,
         TurnstileLogState state,
         IPhotoUrlBuilder photoUrlBuilder,
+        TurnstilePollingController controller,
         IConfiguration config,
         ILogger<TurnstileLogPollingWorker> logger)
     {
         _dbFactory = dbFactory;
         _state = state;
         _photoUrlBuilder = photoUrlBuilder;
+        _controller = controller;
+        _config = config;
         _logger = logger;
 
-        _intervalMs = config.GetValue("TurnstilePolling:IntervalMs", 500);
-        _lookbackSecondsOnStart = config.GetValue("TurnstilePolling:LookbackSecondsOnStart", 3);
+        _intervalMs = config.GetValue("TurnstilePolling:IntervalsMs", config.GetValue("TurnstilePolling:IntervalMs", 500));
+        _lookbackSecondsOnStart = config.GetValue("TurnstilePolling:LookbackSecondsOntart", config.GetValue("TurnstilePolling:LookbackSecondsOnStart", 3));
         _maxRowsPerPoll = config.GetValue("TurnstilePolling:MaxRowsPerPoll", 20);
 
         _lastStampUtc = DateTimeOffset.UtcNow.AddSeconds(-_lookbackSecondsOnStart);
         _lastId = Guid.Empty;
+        _controller.StatusChanged += OnPollingStatusChanged;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _sinceUtc = DateTimeOffset.UtcNow.AddSeconds(-_lookbackSecondsOnStart);
 
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(_intervalMs));
-
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        while (!stoppingToken.IsCancellationRequested)
         {
+            var newInterval = _config.GetValue("TurnstilePolling:IntervalsMs", _config.GetValue("TurnstilePolling:IntervalMs", 500));
+            if (_timer is null || newInterval != _intervalMs)
+            {
+                _timer?.Dispose();
+                _intervalMs = newInterval;
+                _timer = new PeriodicTimer(TimeSpan.FromMilliseconds(_intervalMs));
+            }
+
+            if (_timer is null)
+                break;
+
+            if (!await _timer.WaitForNextTickAsync(stoppingToken))
+                break;
+
             try
             {
-                await PollOnceAsync(stoppingToken);
+                if (_controller.IsActive)
+                {
+                    _lookbackSecondsOnStart = _config.GetValue("TurnstilePolling:LookbackSecondsOntart", _config.GetValue("TurnstilePolling:LookbackSecondsOnStart", _lookbackSecondsOnStart));
+                    _maxRowsPerPoll = _config.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
+                    await PollOnceAsync(stoppingToken);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -62,6 +87,13 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
                 _logger.LogError(ex, "Turnstile polling error.");
             }
         }
+    }
+
+    public override void Dispose()
+    {
+        _controller.StatusChanged -= OnPollingStatusChanged;
+        _timer?.Dispose();
+        base.Dispose();
     }
 
     private async Task PollOnceAsync(CancellationToken ct)
@@ -178,5 +210,18 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
         var oldKeys = _seen.Where(kvp => kvp.Value < cutoff).Select(kvp => kvp.Key).ToList();
         foreach (var k in oldKeys)
             _seen.Remove(k);
+    }
+
+    private void OnPollingStatusChanged(bool isActive)
+    {
+        if (!isActive)
+            return;
+
+        _lookbackSecondsOnStart = _config.GetValue("TurnstilePolling:LookbackSecondsOntart", _config.GetValue("TurnstilePolling:LookbackSecondsOnStart", _lookbackSecondsOnStart));
+        _maxRowsPerPoll = _config.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
+
+        _sinceUtc = DateTimeOffset.UtcNow.AddSeconds(-_lookbackSecondsOnStart);
+        _lastStampUtc = _sinceUtc;
+        _lastId = Guid.Empty;
     }
 }

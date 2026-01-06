@@ -14,6 +14,7 @@ builder.Services.AddDbContextFactory<AccessControlDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("AccessControlDb")));
 
 builder.Services.AddSingleton<TurnstileLogState>();
+builder.Services.AddSingleton<TurnstilePollingController>();
 builder.Services.Configure<PhotoOptions>(builder.Configuration.GetSection("PhotoOptions"));
 builder.Services.AddSingleton<IPhotoUrlBuilder, PhotoUrlBuilder>();
 builder.Services.AddHostedService<TurnstileLogPollingWorker>();
