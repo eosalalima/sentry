@@ -68,8 +68,6 @@ F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\ne
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\6mbquuxwy3-{0}-63fj8s7r0e-63fj8s7r0e.gz
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\b4exd0kk4u-{0}-0j3bgjxly4-0j3bgjxly4.gz
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\7ol209e0ej-{0}-13ja33weya-13ja33weya.gz
-F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\emzyzwd651-{0}-dei1y7yxaa-dei1y7yxaa.gz
-F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\yuvb7a869x-{0}-dei1y7yxaa-dei1y7yxaa.gz
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\staticwebassets.build.json
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\staticwebassets.build.json.cache
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\staticwebassets.development.json
@@ -269,3 +267,6 @@ F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\ne
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\7ccl666qnt-{0}-8ehsk1v8yg-8ehsk1v8yg.gz
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\bin\Debug\net10.0\settings.json
 F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\og32ge4hnp-{0}-uf43pa8fvb-uf43pa8fvb.gz
+F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\scopedcss\Components\Turnstile\LogSpotlight.razor.rz.scp.css
+F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\emzyzwd651-{0}-poi60xthfm-poi60xthfm.gz
+F:\Projects\Dr. Gloria D Lacson School\Application\sentry\SentryApp\obj\Debug\net10.0\compressed\yuvb7a869x-{0}-poi60xthfm-poi60xthfm.gz

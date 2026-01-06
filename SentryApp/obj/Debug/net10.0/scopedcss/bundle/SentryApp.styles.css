@@ -361,3 +361,9 @@ main[b-wfmuibs5j7] {
         opacity: 0;
     }
 }
+/* /Components/Turnstile/LogSpotlight.razor.rz.scp.css */
+.spotlight-card[b-axfpzkpn2p] {
+  width: 50vw;
+  max-width: 100vw;
+  box-sizing: border-box;
+}

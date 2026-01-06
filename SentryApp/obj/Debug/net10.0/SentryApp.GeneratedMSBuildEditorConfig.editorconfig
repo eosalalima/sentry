@@ -74,10 +74,6 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUdXJuc3RpbGVcTG9nUXVldWVJdGVtQ2FyZC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[F:/Projects/Dr. Gloria D Lacson School/Application/sentry/SentryApp/Components/Turnstile/LogSpotlight.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUdXJuc3RpbGVcTG9nU3BvdGxpZ2h0LnJhem9y
-build_metadata.AdditionalFiles.CssScope = 
-
 [F:/Projects/Dr. Gloria D Lacson School/Application/sentry/SentryApp/Components/Turnstile/MonitoringHeader.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUdXJuc3RpbGVcTW9uaXRvcmluZ0hlYWRlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
@@ -101,3 +97,7 @@ build_metadata.AdditionalFiles.CssScope = b-87bk4ykf55
 [F:/Projects/Dr. Gloria D Lacson School/Application/sentry/SentryApp/Components/Layout/ReconnectModal.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcUmVjb25uZWN0TW9kYWwucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = b-8vopgdv5tz
+
+[F:/Projects/Dr. Gloria D Lacson School/Application/sentry/SentryApp/Components/Turnstile/LogSpotlight.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUdXJuc3RpbGVcTG9nU3BvdGxpZ2h0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-axfpzkpn2p
