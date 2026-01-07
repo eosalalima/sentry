@@ -1,8 +1,9 @@
 @using SentryApp.Services
 
 <div class="feed-grid">
-    @foreach (var item in Items)
+    @for (var index = Items.Count - 1; index >= 0; index--)
     {
+        var item = Items[index];
         <FeedCard Entry="item.Entry" />
     }
 </div>
