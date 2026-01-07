@@ -9,16 +9,19 @@ public sealed class DemoDeviceLogGenerator : BackgroundService
 
     private readonly IDbContextFactory<AccessControlDbContext> _dbFactory;
     private readonly IConfiguration _config;
+    private readonly TurnstilePollingController _controller;
     private readonly ILogger<DemoDeviceLogGenerator> _logger;
     private readonly Random _random = new();
 
     public DemoDeviceLogGenerator(
         IDbContextFactory<AccessControlDbContext> dbFactory,
         IConfiguration config,
+        TurnstilePollingController controller,
         ILogger<DemoDeviceLogGenerator> logger)
     {
         _dbFactory = dbFactory;
         _config = config;
+        _controller = controller;
         _logger = logger;
     }
 
@@ -39,6 +42,9 @@ public sealed class DemoDeviceLogGenerator : BackgroundService
                 await Task.Delay(TimeSpan.FromSeconds(delaySeconds), stoppingToken);
 
                 if (IsLiveModeEnabled())
+                    continue;
+
+                if (!_controller.IsActive)
                     continue;
 
                 await GenerateLogAsync(stoppingToken);
