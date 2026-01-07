@@ -75,7 +75,7 @@ public sealed class DemoDeviceLogGenerator : BackgroundService
 
         await db.Database.ExecuteSqlInterpolatedAsync($@"
 INSERT INTO DeviceLogs
-    (Id, DataCreated, IsDeleted, RecordDate, TimeLogStamp, AccessNumber, DeviceSerialNumber, CardNo, SiteCode, LinkId, Event, EventAddress, LogType, VerifyMode, [Index], HasMask, Temperature, IsNotified)
+    (Id, DateCreated, IsDeleted, RecordDate, TimeLogStamp, AccessNumber, DeviceSerialNumber, CardNo, SiteCode, LinkId, Event, EventAddress, LogType, VerifyMode, [Index], HasMask, Temperature, IsNotified)
 VALUES
     ({Guid.NewGuid()}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, { (string?)null }, { (int?)null }, {"20"}, {"1"}, {logType}, {"200"}, 0, { (bool?)null }, { (float?)null }, { (bool?)null });", ct);
     }
