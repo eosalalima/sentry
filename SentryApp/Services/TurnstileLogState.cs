@@ -25,7 +25,7 @@ public sealed class TurnstileLogState : IDisposable
     {
     }
 
-    public void Push(TurnstileLogEntry entry)
+    public void Enqueue(TurnstileLogEntry entry)
     {
         lock (_lock)
         {

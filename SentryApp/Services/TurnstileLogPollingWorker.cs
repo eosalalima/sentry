@@ -182,7 +182,7 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 EventAddress = row.EventAddress
             };
 
-            _state.Push(entry);
+            _state.Enqueue(entry);
         }
     }
 
