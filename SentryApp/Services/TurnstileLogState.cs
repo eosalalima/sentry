@@ -2,7 +2,7 @@ namespace SentryApp.Services;
 
 public sealed class TurnstileLogState : IDisposable
 {
-    private const int MaxQueueItems = 24;
+    private const int MaxQueueItems = 12;
 
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
@@ -37,7 +37,7 @@ public sealed class TurnstileLogState : IDisposable
             // if there was a previous spotlight, move it immediately to queue
             if (Spotlight is not null)
             {
-                _queue.Insert(0, new TurnstileQueueItem
+                _queue.Add(new TurnstileQueueItem
                 {
                     Entry = Spotlight
                 });
@@ -68,7 +68,7 @@ public sealed class TurnstileLogState : IDisposable
         {
             if (Spotlight is not null)
             {
-                _queue.Insert(0, new TurnstileQueueItem
+                _queue.Add(new TurnstileQueueItem
                 {
                     Entry = Spotlight
                 });
@@ -84,7 +84,7 @@ public sealed class TurnstileLogState : IDisposable
     private void TrimQueue()
     {
         while (_queue.Count > MaxQueueItems)
-            _queue.RemoveAt(_queue.Count - 1);
+            _queue.RemoveAt(0);
     }
 
     public void Dispose()
