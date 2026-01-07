@@ -196,20 +196,40 @@
 }
 
 .spot-photo-wrap{
-  width: 520px;
-  max-width: 92%;
+  width: min(720px, 94%);
   margin: 18px auto 8px;
   background:#f1f2f4;
   border-radius:8px;
-  padding:18px;
+  padding:20px;
 }
 
 .spot-photo{
   width: 100%;
   height: auto;
-  max-height: 360px;
+  max-height: 480px;
   object-fit:cover;
   border-radius:8px;
+}
+
+@media (min-width: 1200px){
+  .spot-photo-wrap{
+    width: 760px;
+  }
+
+  .spot-photo{
+    max-height: 520px;
+  }
+}
+
+@media (max-width: 768px){
+  .spot-photo-wrap{
+    width: 100%;
+    padding:16px;
+  }
+
+  .spot-photo{
+    max-height: 320px;
+  }
 }
 
 .spot-name{
