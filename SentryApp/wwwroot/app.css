@@ -91,7 +91,7 @@
   min-height:0;
 }
 
-.mon-left{ flex: 0 0 56%; }
+.mon-left{ flex: 0 0 50%; }
 .mon-right{ flex: 1; display:flex; }
 
 @media (max-width: 1200px){
