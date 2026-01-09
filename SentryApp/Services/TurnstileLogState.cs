@@ -1,11 +1,15 @@
+using Microsoft.Extensions.Configuration;
+
 namespace SentryApp.Services;
 
 public sealed class TurnstileLogState : IDisposable
 {
     private const int MaxQueueItems = 12;
+    private const int DefaultHighlightDisplayDurationMs = 3000;
 
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
+    private readonly IConfiguration _configuration;
     private CancellationTokenSource? _spotlightCts;
 
     public event Action? Changed;
@@ -21,8 +25,9 @@ public sealed class TurnstileLogState : IDisposable
         }
     }
 
-    public TurnstileLogState()
+    public TurnstileLogState(IConfiguration configuration)
     {
+        _configuration = configuration;
     }
 
     public void Push(TurnstileLogEntry entry)
@@ -57,7 +62,8 @@ public sealed class TurnstileLogState : IDisposable
     {
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(3), ct);
+            var delay = GetHighlightDisplayDuration();
+            await Task.Delay(delay, ct);
         }
         catch (OperationCanceledException)
         {
@@ -91,5 +97,14 @@ public sealed class TurnstileLogState : IDisposable
     {
         _spotlightCts?.Cancel();
         _spotlightCts?.Dispose();
+    }
+
+    private TimeSpan GetHighlightDisplayDuration()
+    {
+        var highlightMs = _configuration.GetValue("TurnstilePolling:HighlightDisplayDuration", DefaultHighlightDisplayDurationMs);
+        if (highlightMs < 1)
+            highlightMs = 1;
+
+        return TimeSpan.FromMilliseconds(highlightMs);
     }
 }
