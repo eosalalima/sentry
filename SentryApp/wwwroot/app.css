@@ -211,6 +211,16 @@
   border-radius:8px;
 }
 
+@media (min-width: 2400px){
+  .spot-photo-wrap{
+    width: 1200px;
+  }
+
+  .spot-photo{
+    max-height: 980px;
+  }
+}
+
 @media (min-width: 1200px){
   .spot-photo-wrap{
     width: 720px;
