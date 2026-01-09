@@ -173,6 +173,7 @@
         _selectedDeviceSerial = Configuration.GetValue<string>("SelectedDeviceSerial") ?? string.Empty;
         _pollingIntervalMs = Configuration.GetValue("TurnstilePolling:IntervalsMs",
         Configuration.GetValue("TurnstilePolling:IntervalMs", 500));
+        _highlightDisplayDurationMs = Configuration.GetValue("TurnstilePolling:HighlightDisplayDuration", 3000);
         _lookbackSecondsOnStart = Configuration.GetValue("TurnstilePolling:LookbackSecondsOntart",
         Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", 3));
         _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", 20);
@@ -229,6 +230,7 @@
                 return;
 
             _pollingIntervalMs = Math.Max(1, _pollingIntervalMs);
+            _highlightDisplayDurationMs = Math.Max(1, _highlightDisplayDurationMs);
             _lookbackSecondsOnStart = Math.Max(0, _lookbackSecondsOnStart);
             _maxRowsPerPoll = Math.Max(1, _maxRowsPerPoll);
 
@@ -256,6 +258,7 @@
             _selectedDeviceSerial = Configuration.GetValue<string>("SelectedDeviceSerial") ?? _selectedDeviceSerial;
             _pollingIntervalMs = Configuration.GetValue("TurnstilePolling:IntervalsMs",
             Configuration.GetValue("TurnstilePolling:IntervalMs", _pollingIntervalMs));
+            _highlightDisplayDurationMs = Configuration.GetValue("TurnstilePolling:HighlightDisplayDuration", _highlightDisplayDurationMs);
             _lookbackSecondsOnStart = Configuration.GetValue("TurnstilePolling:LookbackSecondsOntart",
             Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", _lookbackSecondsOnStart));
             _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
@@ -283,6 +286,9 @@
                     {
                         if (TryReadJsonValue(turnstilePolling["IntervalsMs"], out int interval))
                             _pollingIntervalMs = interval;
+
+                        if (TryReadJsonValue(turnstilePolling["HighlightDisplayDuration"], out int highlightDisplayDuration))
+                            _highlightDisplayDurationMs = highlightDisplayDuration;
 
                         if (TryReadJsonValue(turnstilePolling["LookbackSecondsOntart"], out int lookback))
                             _lookbackSecondsOnStart = lookback;
@@ -348,6 +354,7 @@
             if (root["TurnstilePolling"] is JsonObject turnstilePolling)
             {
                 turnstilePolling["IntervalsMs"] = _pollingIntervalMs;
+                turnstilePolling["HighlightDisplayDuration"] = _highlightDisplayDurationMs;
                 turnstilePolling["LookbackSecondsOntart"] = _lookbackSecondsOnStart;
                 turnstilePolling["MaxRowsPerPoll"] = _maxRowsPerPoll;
             }
