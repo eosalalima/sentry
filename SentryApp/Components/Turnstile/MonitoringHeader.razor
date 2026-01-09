@@ -19,6 +19,25 @@
 
     <div>
         <button class="@LiveButtonClass" type="button">@LiveButtonLabel</button>
+        <button class="btn btn-link" type="button" @onclick="TogglePollingServiceAsync"
+            tooltip="Start/Stop Polling Service">
+            @if (_isPollingActive)
+            {
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-stop-fill"
+                    viewBox="0 0 16 16">
+                    <path
+                        d="M5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11V5A1.5 1.5 0 0 1 5 3.5" />
+                </svg>
+            }
+            else
+            {
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-play-fill"
+                    viewBox="0 0 16 16">
+                    <path
+                        d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393" />
+                </svg>
+            }
+        </button>
         <button class="btn btn-link" type="button" @onclick="OpenSettingsAsync">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-gear"
                 viewBox="0 0 16 16">
@@ -112,8 +131,8 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn @(_isPollingActive ? "btn-danger" : "btn-success") me-auto" type="button"
-                        @onclick="TogglePollingServiceAsync">@(_isPollingActive ? "Stop Service" : "Run Service")</button>
+                    @* <button class="btn @(_isPollingActive ? "btn-danger" : "btn-success") me-auto" type="button"
+                        @onclick="TogglePollingServiceAsync">@(_isPollingActive ? "Stop Service" : "Run Service")</button> *@
                     <button class="btn btn-primary" type="button" @onclick="SaveSettingsAsync"
                         disabled="@_isPollingActive">Save</button>
                     <button class="btn btn-secondary" type="button" @onclick="CloseSettings">Close</button>
@@ -258,7 +277,8 @@
             _selectedDeviceSerial = Configuration.GetValue<string>("SelectedDeviceSerial") ?? _selectedDeviceSerial;
             _pollingIntervalMs = Configuration.GetValue("TurnstilePolling:IntervalsMs",
             Configuration.GetValue("TurnstilePolling:IntervalMs", _pollingIntervalMs));
-            _highlightDisplayDurationMs = Configuration.GetValue("TurnstilePolling:HighlightDisplayDuration", _highlightDisplayDurationMs);
+            _highlightDisplayDurationMs = Configuration.GetValue("TurnstilePolling:HighlightDisplayDuration",
+            _highlightDisplayDurationMs);
             _lookbackSecondsOnStart = Configuration.GetValue("TurnstilePolling:LookbackSecondsOntart",
             Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", _lookbackSecondsOnStart));
             _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
