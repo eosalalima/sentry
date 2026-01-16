@@ -40,26 +40,22 @@ public sealed class TurnstileLogState : IDisposable
             _spotlightCts?.Dispose();
             _spotlightCts = new CancellationTokenSource();
 
-            // if there was a previous spotlight, move it immediately to queue
-            if (Spotlight is not null)
-            {
-                _queue.Add(new TurnstileQueueItem
-                {
-                    Entry = Spotlight
-                });
-
-                TrimQueue();
-            }
-
             Spotlight = entry;
 
-            _ = MoveSpotlightToQueueAfterDelayAsync(_spotlightCts.Token);
+            _queue.Add(new TurnstileQueueItem
+            {
+                Entry = entry
+            });
+
+            TrimQueue();
+
+            _ = ClearSpotlightAfterDelayAsync(entry, _spotlightCts.Token);
         }
 
         Changed?.Invoke();
     }
 
-    private async Task MoveSpotlightToQueueAfterDelayAsync(CancellationToken ct)
+    private async Task ClearSpotlightAfterDelayAsync(TurnstileLogEntry entry, CancellationToken ct)
     {
         try
         {
@@ -73,16 +69,10 @@ public sealed class TurnstileLogState : IDisposable
 
         lock (_lock)
         {
-            if (Spotlight is not null)
-            {
-                _queue.Add(new TurnstileQueueItem
-                {
-                    Entry = Spotlight
-                });
-                Spotlight = null;
+            if (!ReferenceEquals(Spotlight, entry))
+                return;
 
-                TrimQueue();
-            }
+            Spotlight = null;
         }
 
         Changed?.Invoke();
