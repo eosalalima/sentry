@@ -5,7 +5,7 @@ namespace SentryApp.Services;
 public sealed class TurnstileLogState : IDisposable
 {
     private const int MaxQueueItems = 12;
-    private const int DefaultHighlightDisplayDurationMs = 3000;
+    private const int DefaultHighlightDisplayDurationMs = 5000;
 
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
