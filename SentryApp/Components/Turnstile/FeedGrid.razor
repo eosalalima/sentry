@@ -1,13 +1,27 @@
 @using SentryApp.Services
 
 <div class="feed-grid">
-    @for (var index = Items.Count - 1; index >= 0; index--)
+    @foreach (var item in FilteredItems.Reverse())
     {
-        var item = Items[index];
         <FeedCard Entry="item.Entry" />
     }
 </div>
 
 @code {
+    private const string AllDevicesValue = "1";
+
     [Parameter] public IReadOnlyList<TurnstileQueueItem> Items { get; set; } = Array.Empty<TurnstileQueueItem>();
+    [Parameter] public string SelectedDeviceSerial { get; set; } = AllDevicesValue;
+
+    private IEnumerable<TurnstileQueueItem> FilteredItems =>
+        Items.Where(item => ShouldDisplay(item.Entry));
+
+    private bool ShouldDisplay(TurnstileLogEntry entry)
+    {
+        if (SelectedDeviceSerial == AllDevicesValue)
+            return true;
+
+        return !string.IsNullOrWhiteSpace(entry.DeviceSerialNumber)
+            && entry.DeviceSerialNumber == SelectedDeviceSerial;
+    }
 }
