@@ -49,9 +49,9 @@
     }
 
     private TurnstileLogEntry? FilteredSpotlight =>
-        State.Spotlight is { } entry && ShouldDisplay(entry)
-            ? entry
-            : null;
+    State.Spotlight is { } entry && ShouldDisplay(entry)
+    ? entry
+    : null;
 
     private bool ShouldDisplay(TurnstileLogEntry entry)
     {
@@ -59,30 +59,30 @@
             return true;
 
         return !string.IsNullOrWhiteSpace(entry.DeviceSerialNumber)
-            && entry.DeviceSerialNumber == EffectiveSelectedDeviceSerial;
+        && entry.DeviceSerialNumber == EffectiveSelectedDeviceSerial;
     }
 
     private string EffectiveSelectedDeviceSerial =>
-        _selectedDeviceSerial == AllDevicesValue || HasMatchingDeviceSerial()
-            ? _selectedDeviceSerial
-            : AllDevicesValue;
+    _selectedDeviceSerial == AllDevicesValue || HasMatchingDeviceSerial()
+    ? _selectedDeviceSerial
+    : AllDevicesValue;
 
     private bool HasMatchingDeviceSerial() =>
-        State.QueueSnapshot.Any(item =>
-            string.Equals(item.Entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
+    State.QueueSnapshot.Any(item =>
+    string.Equals(item.Entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
 
     private async Task EnsureSelectedDeviceSerialAsync()
     {
         try
         {
             var storedSerial = await JsRuntime.InvokeAsync<string>(
-                "sentryApp.ensureLocalStorageValue",
-                SelectedDeviceSerialStorageKey,
-                AllDevicesValue);
+            "sentryApp.ensureLocalStorageValue",
+            SelectedDeviceSerialStorageKey,
+            AllDevicesValue);
 
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(storedSerial)
-                ? AllDevicesValue
-                : storedSerial;
+            ? AllDevicesValue
+            : storedSerial;
         }
         catch (JSException)
         {
