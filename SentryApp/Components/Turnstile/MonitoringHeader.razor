@@ -267,6 +267,7 @@
 
             _showSettingsModal = false;
             await InvokeAsync(StateHasChanged);
+            await JsRuntime.InvokeVoidAsync("location.reload");
         }
         catch (Exception ex)
         {
