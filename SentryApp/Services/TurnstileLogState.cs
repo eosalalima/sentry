@@ -40,14 +40,10 @@ public sealed class TurnstileLogState : IDisposable
             _spotlightCts?.Dispose();
             _spotlightCts = new CancellationTokenSource();
 
+            if (Spotlight is not null)
+                AddToQueue(Spotlight);
+
             Spotlight = entry;
-
-            _queue.Add(new TurnstileQueueItem
-            {
-                Entry = entry
-            });
-
-            TrimQueue();
 
             _ = ClearSpotlightAfterDelayAsync(entry, _spotlightCts.Token);
         }
@@ -73,9 +69,20 @@ public sealed class TurnstileLogState : IDisposable
                 return;
 
             Spotlight = null;
+            AddToQueue(entry);
         }
 
         Changed?.Invoke();
+    }
+
+    private void AddToQueue(TurnstileLogEntry entry)
+    {
+        _queue.Add(new TurnstileQueueItem
+        {
+            Entry = entry
+        });
+
+        TrimQueue();
     }
 
     private void TrimQueue()
