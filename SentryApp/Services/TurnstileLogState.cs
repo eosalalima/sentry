@@ -6,6 +6,7 @@ public sealed class TurnstileLogState : IDisposable
 {
     private const int MaxQueueItems = 12;
     private const int DefaultHighlightDisplayDurationMs = 3000;
+    private const string AllDevicesValue = "1";
 
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
@@ -89,8 +90,24 @@ public sealed class TurnstileLogState : IDisposable
 
     private void TrimQueue()
     {
-        while (_queue.Count > MaxQueueItems)
-            _queue.RemoveAt(0);
+        var selectedDeviceSerial = GetSelectedDeviceSerial();
+
+        while (CountForSerial(selectedDeviceSerial) > MaxQueueItems)
+        {
+            if (selectedDeviceSerial == AllDevicesValue)
+            {
+                _queue.RemoveAt(0);
+                continue;
+            }
+
+            var index = _queue.FindIndex(item =>
+                string.Equals(item.Entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
+
+            if (index < 0)
+                break;
+
+            _queue.RemoveAt(index);
+        }
     }
 
     public void Dispose()
@@ -106,5 +123,20 @@ public sealed class TurnstileLogState : IDisposable
             highlightMs = 1;
 
         return TimeSpan.FromMilliseconds(highlightMs);
+    }
+
+    private string GetSelectedDeviceSerial()
+    {
+        var selectedDeviceSerial = _configuration.GetValue<string>("SelectedDeviceSerial");
+        return string.IsNullOrWhiteSpace(selectedDeviceSerial) ? AllDevicesValue : selectedDeviceSerial;
+    }
+
+    private int CountForSerial(string selectedDeviceSerial)
+    {
+        if (selectedDeviceSerial == AllDevicesValue)
+            return _queue.Count;
+
+        return _queue.Count(item =>
+            string.Equals(item.Entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
     }
 }
