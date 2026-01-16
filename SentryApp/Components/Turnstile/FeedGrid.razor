@@ -1,13 +1,60 @@
 @using SentryApp.Services
+@inject IJSRuntime JsRuntime
 
 <div class="feed-grid">
-    @for (var index = Items.Count - 1; index >= 0; index--)
+    @{
+        var visibleItems = FilteredItems;
+    }
+
+    @for (var index = visibleItems.Count - 1; index >= 0; index--)
     {
-        var item = Items[index];
+        var item = visibleItems[index];
         <FeedCard Entry="item.Entry" />
     }
 </div>
 
 @code {
+    private const string AllDevicesValue = "1";
+    private const string SelectedDeviceStorageKey = "SelectedDeviceSerial";
+
     [Parameter] public IReadOnlyList<TurnstileQueueItem> Items { get; set; } = Array.Empty<TurnstileQueueItem>();
+
+    private string? _selectedDeviceSerial;
+    private bool _hasLoadedSelectedDevice;
+
+    private IReadOnlyList<TurnstileQueueItem> FilteredItems =>
+        string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue
+            ? Items
+            : Items.Where(item => ShouldShowEntry(item.Entry)).ToList();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_hasLoadedSelectedDevice)
+        {
+            _hasLoadedSelectedDevice = true;
+            await LoadSelectedDeviceSerialAsync();
+        }
+    }
+
+    private async Task LoadSelectedDeviceSerialAsync()
+    {
+        try
+        {
+            var deviceSerial = await JsRuntime.InvokeAsync<string?>("localStorage.getItem", SelectedDeviceStorageKey);
+            _selectedDeviceSerial = string.IsNullOrWhiteSpace(deviceSerial) ? AllDevicesValue : deviceSerial;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (JSException)
+        {
+            _selectedDeviceSerial = AllDevicesValue;
+        }
+    }
+
+    private bool ShouldShowEntry(TurnstileLogEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
+            return true;
+
+        return string.Equals(entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
+    }
 }

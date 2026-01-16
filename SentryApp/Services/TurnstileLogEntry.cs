@@ -11,6 +11,7 @@ public sealed class TurnstileLogEntry
     public string PersonnelName { get; init; } = "UNKNOWN";
     public string? AccessNumber { get; init; }
 
+    public string? DeviceSerialNumber { get; init; }
     public string? DeviceName { get; init; }
     public string? VerifyMode { get; init; }
     public string? Event { get; init; }

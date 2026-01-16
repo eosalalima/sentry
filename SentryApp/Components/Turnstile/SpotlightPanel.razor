@@ -1,4 +1,5 @@
 @using SentryApp.Services
+@inject IJSRuntime JsRuntime
 @implements IDisposable
 
 <div class="spot">
@@ -7,7 +8,11 @@
         <div class="spot-bar-right">@_clockText</div>
     </div>
 
-    @if (Entry is null)
+    @{
+        var visibleEntry = VisibleEntry;
+    }
+
+    @if (visibleEntry is null)
     {
         <div class="spot-empty">Waiting for turnstile logs…</div>
     }
@@ -15,17 +20,17 @@
     {
         <div class="spot-body">
             <div class="spot-photo-wrap">
-                <img class="spot-photo" src="@Entry.PhotoUrl" alt="Photo" />
+                <img class="spot-photo" src="@visibleEntry.PhotoUrl" alt="Photo" />
             </div>
 
-            <div class="spot-name">@Entry.PersonnelName</div>
-            <div class="spot-sub">@Entry.VerifyMode</div>
+            <div class="spot-name">@visibleEntry.PersonnelName</div>
+            <div class="spot-sub">@visibleEntry.VerifyMode</div>
 
             <div class="spot-meta">
-                <div><span>Access #</span> @Entry.AccessNumber</div>
-                <div><span>Device</span> @Entry.DeviceName</div>
-                <div><span>Event</span> @Entry.Event</div>
-                <div><span>EventAddress</span> @Entry.EventAddress</div>
+                <div><span>Access #</span> @visibleEntry.AccessNumber</div>
+                <div><span>Device</span> @visibleEntry.DeviceName</div>
+                <div><span>Event</span> @visibleEntry.Event</div>
+                <div><span>EventAddress</span> @visibleEntry.EventAddress</div>
             </div>
         </div>
     }
@@ -34,10 +39,16 @@
 @code {
     [Parameter] public TurnstileLogEntry? Entry { get; set; }
 
+    private const string AllDevicesValue = "1";
+    private const string SelectedDeviceStorageKey = "SelectedDeviceSerial";
+
     private readonly System.Timers.Timer _clock = new(1000);
     private string _clockText = DateTime.Now.ToString("HH:mm:ss");
+    private string? _selectedDeviceSerial;
+    private bool _hasLoadedSelectedDevice;
 
-    private bool IsOut => string.Equals(Entry?.LogType, "OUT", StringComparison.OrdinalIgnoreCase);
+    private bool IsOut => string.Equals(VisibleEntry?.LogType, "OUT", StringComparison.OrdinalIgnoreCase);
+    private TurnstileLogEntry? VisibleEntry => Entry is not null && ShouldShowEntry(Entry) ? Entry : null;
 
     protected override void OnInitialized()
     {
@@ -50,9 +61,40 @@
         _clock.Start();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_hasLoadedSelectedDevice)
+        {
+            _hasLoadedSelectedDevice = true;
+            await LoadSelectedDeviceSerialAsync();
+        }
+    }
+
     public void Dispose()
     {
         _clock.Stop();
         _clock.Dispose();
+    }
+
+    private async Task LoadSelectedDeviceSerialAsync()
+    {
+        try
+        {
+            var deviceSerial = await JsRuntime.InvokeAsync<string?>("localStorage.getItem", SelectedDeviceStorageKey);
+            _selectedDeviceSerial = string.IsNullOrWhiteSpace(deviceSerial) ? AllDevicesValue : deviceSerial;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (JSException)
+        {
+            _selectedDeviceSerial = AllDevicesValue;
+        }
+    }
+
+    private bool ShouldShowEntry(TurnstileLogEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
+            return true;
+
+        return string.Equals(entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
     }
 }
