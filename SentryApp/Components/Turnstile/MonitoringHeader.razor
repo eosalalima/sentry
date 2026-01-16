@@ -160,6 +160,7 @@
     private TurnstilePollingController PollingController { get; set; } = default!;
 
     private const string AllDevicesValue = "1";
+    private const string SelectedDeviceStorageKey = "SelectedDeviceSerial";
 
     private bool _showSettingsModal;
     private string _connectionString = string.Empty;
@@ -227,6 +228,12 @@
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await EnsureSelectedDeviceSerialInStorageAsync();
+    }
+
     private async Task TogglePollingServiceAsync()
     {
         if (_isPollingActive)
@@ -235,6 +242,7 @@
         }
         else
         {
+            await EnsureSelectedDeviceSerialInStorageAsync();
             PollingController.TryStart();
         }
 
@@ -254,6 +262,7 @@
             _maxRowsPerPoll = Math.Max(1, _maxRowsPerPoll);
 
             await UpdateAppSettingsAsync();
+            await UpdateSelectedDeviceStorageAsync();
 
             _showSettingsModal = false;
 
@@ -324,6 +333,8 @@
             Console.Error.WriteLine($"Failed to load settings: {ex}");
         }
 
+        await EnsureSelectedDeviceSerialInStorageAsync();
+
         if (_devices.Count > 0)
         {
             if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
@@ -390,6 +401,42 @@
         }
     }
 
+    private async Task EnsureSelectedDeviceSerialInStorageAsync()
+    {
+        try
+        {
+            var storedSerial = await JsRuntime.InvokeAsync<string?>("localStorage.getItem", SelectedDeviceStorageKey);
+            if (string.IsNullOrWhiteSpace(storedSerial))
+            {
+                _selectedDeviceSerial = AllDevicesValue;
+                await JsRuntime.InvokeVoidAsync("localStorage.setItem", SelectedDeviceStorageKey, _selectedDeviceSerial);
+            }
+            else
+            {
+                _selectedDeviceSerial = storedSerial;
+            }
+        }
+        catch (JSException)
+        {
+            if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
+                _selectedDeviceSerial = AllDevicesValue;
+        }
+
+        EnsureSelectedDeviceSerialIsValid();
+    }
+
+    private async Task UpdateSelectedDeviceStorageAsync()
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("localStorage.setItem", SelectedDeviceStorageKey, _selectedDeviceSerial);
+        }
+        catch (JSException)
+        {
+            Console.Error.WriteLine("Local storage is not available.");
+        }
+    }
+
     private static bool TryReadJsonValue<T>(JsonNode? node, out T value)
     {
         if (node is JsonValue jsonValue)
@@ -425,6 +472,17 @@
 
             return "mon-live-btn btn btn-warning";
         }
+    }
+
+    private void EnsureSelectedDeviceSerialIsValid()
+    {
+        if (_devices.Count == 0)
+            return;
+
+        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
+            _selectedDeviceSerial = _devices[0].SerialNumber;
+        else if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
+            _selectedDeviceSerial = _devices[0].SerialNumber;
     }
 
     private string MonitoringTitle
