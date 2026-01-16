@@ -176,6 +176,7 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 PersonnelName = name,
                 AccessNumber = row.AccessNumber,
 
+                DeviceSerialNumber = row.DeviceSerialNumber,
                 DeviceName = row.DeviceName ?? row.DeviceSerialNumber,
                 VerifyMode = row.DeviceLogVerifyMode ?? row.TimeLogVerifyMode,
                 Event = row.Event,
