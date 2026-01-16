@@ -38,3 +38,32 @@ window.sentryApp.selectFolder = function () {
         input.click();
     });
 };
+
+window.sentryApp.getLocalStorage = function (key) {
+    try {
+        return window.localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+};
+
+window.sentryApp.setLocalStorage = function (key, value) {
+    try {
+        window.localStorage.setItem(key, value);
+    } catch {
+        // ignore write errors (e.g. storage blocked)
+    }
+};
+
+window.sentryApp.ensureLocalStorageValue = function (key, defaultValue) {
+    try {
+        const existing = window.localStorage.getItem(key);
+        if (existing === null) {
+            window.localStorage.setItem(key, defaultValue);
+            return defaultValue;
+        }
+        return existing;
+    } catch {
+        return defaultValue;
+    }
+};

@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @implements IDisposable
 @inject SentryApp.Services.TurnstileLogState State
+@inject IJSRuntime JsRuntime
 
 @using SentryApp.Components.Turnstile
 
@@ -10,19 +11,33 @@
 
     <div class="mon-body">
         <div class="mon-left">
-            <FeedGrid Items="State.QueueSnapshot" />
+            <FeedGrid Items="FilteredQueueItems" />
         </div>
 
         <div class="mon-right">
-            <SpotlightPanel Entry="State.Spotlight" />
+            <SpotlightPanel Entry="FilteredSpotlight" />
         </div>
     </div>
 </div>
 
 @code {
+    private const string AllDevicesValue = "1";
+    private const string SelectedDeviceSerialStorageKey = "SelectedDeviceSerial";
+
+    private string _selectedDeviceSerial = AllDevicesValue;
+
     protected override void OnInitialized()
     {
         State.Changed += OnStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await EnsureSelectedDeviceSerialAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
@@ -30,5 +45,43 @@
     public void Dispose()
     {
         State.Changed -= OnStateChanged;
+    }
+
+    private IReadOnlyList<TurnstileQueueItem> FilteredQueueItems =>
+        State.QueueSnapshot
+            .Where(item => ShouldDisplay(item.Entry))
+            .ToList();
+
+    private TurnstileLogEntry? FilteredSpotlight =>
+        State.Spotlight is { } entry && ShouldDisplay(entry)
+            ? entry
+            : null;
+
+    private bool ShouldDisplay(TurnstileLogEntry entry)
+    {
+        if (_selectedDeviceSerial == AllDevicesValue)
+            return true;
+
+        return !string.IsNullOrWhiteSpace(entry.DeviceSerialNumber)
+            && entry.DeviceSerialNumber == _selectedDeviceSerial;
+    }
+
+    private async Task EnsureSelectedDeviceSerialAsync()
+    {
+        try
+        {
+            var storedSerial = await JsRuntime.InvokeAsync<string>(
+                "sentryApp.ensureLocalStorageValue",
+                SelectedDeviceSerialStorageKey,
+                AllDevicesValue);
+
+            _selectedDeviceSerial = string.IsNullOrWhiteSpace(storedSerial)
+                ? AllDevicesValue
+                : storedSerial;
+        }
+        catch (JSException)
+        {
+            _selectedDeviceSerial = AllDevicesValue;
+        }
     }
 }
