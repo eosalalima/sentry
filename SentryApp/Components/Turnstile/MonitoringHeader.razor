@@ -263,10 +263,10 @@
 
             await UpdateAppSettingsAsync();
             await UpdateSelectedDeviceStorageAsync();
+            EnsureSelectedDeviceSerialIsValid();
 
             _showSettingsModal = false;
-
-            await JsRuntime.InvokeVoidAsync("location.reload");
+            await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {
