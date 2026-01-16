@@ -12,7 +12,7 @@
 
     <div class="mon-body">
         <div class="mon-left">
-            <FeedGrid Items="State.QueueSnapshot" SelectedDeviceSerial="_selectedDeviceSerial" />
+            <FeedGrid Items="State.QueueSnapshot" SelectedDeviceSerial="EffectiveSelectedDeviceSerial" />
         </div>
 
         <div class="mon-right">
@@ -55,12 +55,21 @@
 
     private bool ShouldDisplay(TurnstileLogEntry entry)
     {
-        if (_selectedDeviceSerial == AllDevicesValue)
+        if (EffectiveSelectedDeviceSerial == AllDevicesValue)
             return true;
 
         return !string.IsNullOrWhiteSpace(entry.DeviceSerialNumber)
-            && entry.DeviceSerialNumber == _selectedDeviceSerial;
+            && entry.DeviceSerialNumber == EffectiveSelectedDeviceSerial;
     }
+
+    private string EffectiveSelectedDeviceSerial =>
+        _selectedDeviceSerial == AllDevicesValue || HasMatchingDeviceSerial()
+            ? _selectedDeviceSerial
+            : AllDevicesValue;
+
+    private bool HasMatchingDeviceSerial() =>
+        State.QueueSnapshot.Any(item =>
+            string.Equals(item.Entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
 
     private async Task EnsureSelectedDeviceSerialAsync()
     {
