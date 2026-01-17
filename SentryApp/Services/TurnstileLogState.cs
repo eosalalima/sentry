@@ -4,6 +4,7 @@ namespace SentryApp.Services;
 
 public sealed class TurnstileLogState : IDisposable
 {
+    private const string AllDevicesValue = "1";
     private const int MaxQueueItems = 12;
     private readonly int _defaultHighlightDisplayDurationMs;
 
@@ -12,6 +13,7 @@ public sealed class TurnstileLogState : IDisposable
     private readonly IConfiguration _configuration;
     private readonly HashSet<Guid> _pendingQueueEntries = new();
     private readonly CancellationTokenSource _disposeCts = new();
+    private string _selectedDeviceSerial = AllDevicesValue;
 
     public event Action? Changed;
 
@@ -36,6 +38,9 @@ public sealed class TurnstileLogState : IDisposable
     {
         lock (_lock)
         {
+            if (!ShouldAcceptEntry(entry))
+                return;
+
             Spotlight = entry;
 
             if (_pendingQueueEntries.Add(entry.TimeLogId))
@@ -59,6 +64,15 @@ public sealed class TurnstileLogState : IDisposable
 
         lock (_lock)
         {
+            if (!ShouldAcceptEntry(entry))
+            {
+                if (Spotlight?.TimeLogId == entry.TimeLogId)
+                    Spotlight = null;
+
+                _pendingQueueEntries.Remove(entry.TimeLogId);
+                return;
+            }
+
             if (_queue.Any(item => item.Entry.TimeLogId == entry.TimeLogId))
             {
                 _pendingQueueEntries.Remove(entry.TimeLogId);
@@ -92,6 +106,29 @@ public sealed class TurnstileLogState : IDisposable
         _disposeCts.Dispose();
     }
 
+    public void UpdateSelectedDeviceSerial(string? selectedDeviceSerial)
+    {
+        var normalized = string.IsNullOrWhiteSpace(selectedDeviceSerial) ? AllDevicesValue : selectedDeviceSerial;
+
+        lock (_lock)
+        {
+            if (string.Equals(_selectedDeviceSerial, normalized, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            _selectedDeviceSerial = normalized;
+
+            if (_selectedDeviceSerial != AllDevicesValue)
+            {
+                _queue.RemoveAll(item => !ShouldAcceptEntry(item.Entry));
+
+                if (Spotlight is not null && !ShouldAcceptEntry(Spotlight))
+                    Spotlight = null;
+            }
+        }
+
+        Changed?.Invoke();
+    }
+
     private TimeSpan GetHighlightDisplayDuration()
     {
         var highlightMs = _configuration.GetValue("TurnstilePolling:HighlightDisplayDuration", _defaultHighlightDisplayDurationMs);
@@ -99,5 +136,13 @@ public sealed class TurnstileLogState : IDisposable
             highlightMs = 1;
 
         return TimeSpan.FromMilliseconds(highlightMs);
+    }
+
+    private bool ShouldAcceptEntry(TurnstileLogEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
+            return true;
+
+        return string.Equals(entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
     }
 }
