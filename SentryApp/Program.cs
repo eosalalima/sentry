@@ -18,10 +18,7 @@ builder.Services.AddSingleton<TurnstilePollingController>();
 builder.Services.Configure<PhotoOptions>(builder.Configuration.GetSection("PhotoOptions"));
 builder.Services.AddSingleton<IPhotoUrlBuilder, PhotoUrlBuilder>();
 builder.Services.AddHostedService<TurnstileLogPollingWorker>();
-
-var isLiveMode = builder.Configuration.GetValue<bool>("IsLiveMode");
-if (!isLiveMode)
-    builder.Services.AddHostedService<DemoDeviceLogGenerator>();
+builder.Services.AddHostedService<DemoDeviceLogGenerator>();
 
 var app = builder.Build();
 
