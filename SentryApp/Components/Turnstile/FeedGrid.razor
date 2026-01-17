@@ -1,5 +1,6 @@
 @using SentryApp.Services
 @inject IJSRuntime JsRuntime
+@inject TurnstileLogState LogState
 
 <div class="feed-grid">
     @{
@@ -42,11 +43,13 @@
         {
             var deviceSerial = await JsRuntime.InvokeAsync<string?>("localStorage.getItem", SelectedDeviceStorageKey);
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(deviceSerial) ? AllDevicesValue : deviceSerial;
+            LogState.UpdateSelectedDeviceSerial(_selectedDeviceSerial);
             await InvokeAsync(StateHasChanged);
         }
         catch (JSException)
         {
             _selectedDeviceSerial = AllDevicesValue;
+            LogState.UpdateSelectedDeviceSerial(_selectedDeviceSerial);
         }
     }
 
