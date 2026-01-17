@@ -10,7 +10,8 @@ public sealed class TurnstileLogState : IDisposable
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
     private readonly IConfiguration _configuration;
-    private CancellationTokenSource? _spotlightCts;
+    private readonly HashSet<Guid> _pendingQueueEntries = new();
+    private readonly CancellationTokenSource _disposeCts = new();
 
     public event Action? Changed;
 
@@ -35,31 +36,16 @@ public sealed class TurnstileLogState : IDisposable
     {
         lock (_lock)
         {
-            // cancel previous delayed move
-            _spotlightCts?.Cancel();
-            _spotlightCts?.Dispose();
-            _spotlightCts = new CancellationTokenSource();
-
-            // if there was a previous spotlight, move it immediately to queue
-            if (Spotlight is not null)
-            {
-                _queue.Add(new TurnstileQueueItem
-                {
-                    Entry = Spotlight
-                });
-
-                TrimQueue();
-            }
-
             Spotlight = entry;
 
-            _ = MoveSpotlightToQueueAfterDelayAsync(_spotlightCts.Token);
+            if (_pendingQueueEntries.Add(entry.TimeLogId))
+                _ = MoveEntryToQueueAfterDelayAsync(entry, _disposeCts.Token);
         }
 
         Changed?.Invoke();
     }
 
-    private async Task MoveSpotlightToQueueAfterDelayAsync(CancellationToken ct)
+    private async Task MoveEntryToQueueAfterDelayAsync(TurnstileLogEntry entry, CancellationToken ct)
     {
         try
         {
@@ -73,16 +59,22 @@ public sealed class TurnstileLogState : IDisposable
 
         lock (_lock)
         {
-            if (Spotlight is not null)
+            if (_queue.Any(item => item.Entry.TimeLogId == entry.TimeLogId))
             {
-                _queue.Add(new TurnstileQueueItem
-                {
-                    Entry = Spotlight
-                });
+                _pendingQueueEntries.Remove(entry.TimeLogId);
+                return;
+            }
+
+            _queue.Add(new TurnstileQueueItem
+            {
+                Entry = entry
+            });
+
+            if (Spotlight?.TimeLogId == entry.TimeLogId)
                 Spotlight = null;
 
-                TrimQueue();
-            }
+            TrimQueue();
+            _pendingQueueEntries.Remove(entry.TimeLogId);
         }
 
         Changed?.Invoke();
@@ -96,8 +88,8 @@ public sealed class TurnstileLogState : IDisposable
 
     public void Dispose()
     {
-        _spotlightCts?.Cancel();
-        _spotlightCts?.Dispose();
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
     }
 
     private TimeSpan GetHighlightDisplayDuration()
