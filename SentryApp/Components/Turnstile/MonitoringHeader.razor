@@ -3,6 +3,8 @@
 @using Microsoft.AspNetCore.Hosting
 @using System.Text.Json
 @using System.Text.Json.Nodes
+@using System.IO.Ports
+@using System.Threading
 @using SentryApp.Data
 @using SentryApp.Data.Query
 @using SentryApp.Services
@@ -95,9 +97,13 @@
 
                     <div class="mt-3 mb-3">
                         <label class="form-label" for="smsComPort">SMS module COM port number</label>
-                        <input class="form-control" id="smsComPort" type="number" min="1" step="1"
-                            @bind-value="_smsComPortNumber" @bind-value:event="oninput" disabled="@_isPollingActive"
-                            placeholder="e.g. 3" />
+                        <div class="input-group">
+                            <input class="form-control" id="smsComPort" type="number" min="1" step="1"
+                                @bind-value="_smsComPortNumber" @bind-value:event="oninput" disabled="@_isPollingActive"
+                                placeholder="e.g. 3" />
+                            <button class="btn btn-outline-secondary" type="button" @onclick="OpenSmsTestModal"
+                                disabled="@_isPollingActive">Send test message</button>
+                        </div>
                     </div>
 
                     <div class="mt-3 mb-3">
@@ -150,6 +156,42 @@
     <div class="modal-backdrop fade show" @onclick="CloseSettings"></div>
 }
 
+@if (_showSmsTestModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Send Test Message</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseSmsTestModal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="smsTestNumber">Mobile number</label>
+                        <input class="form-control" id="smsTestNumber" type="tel" @bind="_smsTestMobileNumber"
+                            placeholder="+63..." />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="smsTestMessage">Message</label>
+                        <textarea class="form-control" id="smsTestMessage" rows="4"
+                            @bind="_smsTestMessage"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary" type="button" @onclick="SendTestSmsAsync"
+                        disabled="@_isSendingSmsTest">Send</button>
+                    <button class="btn btn-secondary" type="button" @onclick="CloseSmsTestModal"
+                        disabled="@_isSendingSmsTest">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show" @onclick="CloseSmsTestModal"></div>
+}
+
 @if (_showToast)
 {
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
@@ -199,6 +241,10 @@
     private string _toastMessage = string.Empty;
     private string _toastVariant = "info";
     private CancellationTokenSource? _toastCts;
+    private bool _showSmsTestModal;
+    private string _smsTestMobileNumber = string.Empty;
+    private string _smsTestMessage = string.Empty;
+    private bool _isSendingSmsTest;
 
     private async Task OpenSettingsAsync()
     {
@@ -307,6 +353,79 @@
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Failed to save settings: {ex}");
+        }
+    }
+
+    private void OpenSmsTestModal()
+    {
+        _smsTestMobileNumber = string.Empty;
+        _smsTestMessage = string.Empty;
+        _showSmsTestModal = true;
+    }
+
+    private void CloseSmsTestModal() => _showSmsTestModal = false;
+
+    private async Task SendTestSmsAsync()
+    {
+        if (_isSendingSmsTest)
+            return;
+
+        if (_smsComPortNumber < 1)
+        {
+            await ShowToastAsync("Please enter a valid COM port number.", "danger");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_smsTestMobileNumber))
+        {
+            await ShowToastAsync("Please provide a mobile number.", "danger");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_smsTestMessage))
+        {
+            await ShowToastAsync("Please enter a message to send.", "danger");
+            return;
+        }
+
+        _isSendingSmsTest = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var portName = $"COM{_smsComPortNumber}";
+            await Task.Run(() =>
+            {
+                using var serialPort = new SerialPort(portName, 9600, Parity.None, 8, StopBits.One)
+                {
+                    ReadTimeout = 5000,
+                    WriteTimeout = 5000,
+                    NewLine = "\r"
+                };
+
+                serialPort.Open();
+                serialPort.Write("AT\r");
+                Thread.Sleep(500);
+                serialPort.Write("AT+CMGF=1\r");
+                Thread.Sleep(500);
+                serialPort.Write($"AT+CMGS=\"{_smsTestMobileNumber}\"\r");
+                Thread.Sleep(500);
+                serialPort.Write(_smsTestMessage + "\x1A");
+                Thread.Sleep(3000);
+            });
+
+            _showSmsTestModal = false;
+            await ShowToastAsync("Test message sent successfully.", "success");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to send test message: {ex}");
+            await ShowToastAsync($"Failed to send test message: {ex.Message}", "danger");
+        }
+        finally
+        {
+            _isSendingSmsTest = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
