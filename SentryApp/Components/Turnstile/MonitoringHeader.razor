@@ -94,6 +94,13 @@
                     </div>
 
                     <div class="mt-3 mb-3">
+                        <label class="form-label" for="smsComPort">SMS module COM port number</label>
+                        <input class="form-control" id="smsComPort" type="number" min="1" step="1"
+                            @bind-value="_smsComPortNumber" @bind-value:event="oninput" disabled="@_isPollingActive"
+                            placeholder="e.g. 3" />
+                    </div>
+
+                    <div class="mt-3 mb-3">
                         <label class="form-label" for="photosPath">Photos path</label>
                         <div class="input-group">
                             <input class="form-control" id="photosPath" type="text" @bind="_photosPath"
@@ -185,6 +192,7 @@
     private int _highlightDisplayDurationMs = 3000;
     private int _lookbackSecondsOnStart = 3;
     private int _maxRowsPerPoll = 20;
+    private int _smsComPortNumber = 1;
     private bool _isPollingActive;
     private List<ZkDevice> _devices = new();
     private bool _showToast;
@@ -215,6 +223,7 @@
         _lookbackSecondsOnStart = Configuration.GetValue("TurnstilePolling:LookbackSecondsOntart",
         Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", 3));
         _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", 20);
+        _smsComPortNumber = Configuration.GetValue("SmsModule:ComPort", 1);
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
@@ -285,6 +294,7 @@
             _highlightDisplayDurationMs = Math.Max(1, _highlightDisplayDurationMs);
             _lookbackSecondsOnStart = Math.Max(0, _lookbackSecondsOnStart);
             _maxRowsPerPoll = Math.Max(1, _maxRowsPerPoll);
+            _smsComPortNumber = Math.Max(1, _smsComPortNumber);
 
             await UpdateAppSettingsAsync();
             await UpdateSelectedDeviceStorageAsync();
@@ -317,6 +327,7 @@
             _lookbackSecondsOnStart = Configuration.GetValue("TurnstilePolling:LookbackSecondsOntart",
             Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", _lookbackSecondsOnStart));
             _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
+            _smsComPortNumber = Configuration.GetValue("SmsModule:ComPort", _smsComPortNumber);
 
             var appSettingsPath = Path.Combine(Environment.ContentRootPath, "appsettings.json");
             if (File.Exists(appSettingsPath))
@@ -350,6 +361,12 @@
 
                         if (TryReadJsonValue(turnstilePolling["MaxRowsPerPoll"], out int maxRows))
                             _maxRowsPerPoll = maxRows;
+                    }
+
+                    if (root["SmsModule"] is JsonObject smsModule)
+                    {
+                        if (TryReadJsonValue(smsModule["ComPort"], out int comPort))
+                            _smsComPortNumber = comPort;
                     }
                 }
             }
@@ -415,6 +432,10 @@
                 turnstilePolling["LookbackSecondsOntart"] = _lookbackSecondsOnStart;
                 turnstilePolling["MaxRowsPerPoll"] = _maxRowsPerPoll;
             }
+
+            root["SmsModule"] ??= new JsonObject();
+            if (root["SmsModule"] is JsonObject smsModule)
+                smsModule["ComPort"] = _smsComPortNumber;
 
             await File.WriteAllTextAsync(appSettingsPath, root.ToJsonString(new JsonSerializerOptions
             {
