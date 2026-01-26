@@ -1,0 +1,136 @@
+@page "/sentry-test"
+@using Microsoft.EntityFrameworkCore
+@using SentryGate.Data
+@inject IDbContextFactory<AccessControlDbContext> DbFactory
+
+<h1>Sentry Test</h1>
+
+<p>
+    <button class="btn btn-primary" @onclick="AddEntryLogAsync" disabled="@_isBusy">
+        Add Entry log
+    </button>
+</p>
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="alert alert-warning" role="alert">
+        @_errorMessage
+    </div>
+}
+
+<div class="mt-3">
+    <h2 class="h5">Latest Device Logs</h2>
+
+    @if (_deviceLogs.Count == 0)
+    {
+        <p class="text-muted">No device logs found.</p>
+    }
+    else
+    {
+        <ul class="list-group">
+            @foreach (var log in _deviceLogs)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-start">
+                    <div class="ms-2 me-auto">
+                        <div class="fw-semibold">@log.AccessNumber (@log.LogType)</div>
+                        <div class="text-muted">Device: @log.DeviceSerialNumber</div>
+                    </div>
+                    <span class="badge text-bg-secondary rounded-pill">@log.TimeLogStamp.LocalDateTime.ToString("g")</span>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private static readonly string[] LogTypes = ["IN", "OUT", "BREAK OUT"];
+    private readonly Random _random = new();
+    private List<DeviceLogListItem> _deviceLogs = new();
+    private bool _isBusy;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecentLogsAsync();
+    }
+
+    private async Task AddEntryLogAsync()
+    {
+        _isBusy = true;
+        _errorMessage = null;
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var accessNumber = await PickRandomValueAsync(db, "SELECT TOP 1 AccessNumber FROM Personnels WHERE IsDeleted = 0 ORDER BY NEWID()");
+            var deviceSerial = await PickRandomValueAsync(db, "SELECT TOP 1 SerialNumber FROM ZKDevices WHERE IsDeleted = 0 ORDER BY NEWID()");
+
+            if (string.IsNullOrWhiteSpace(accessNumber) || string.IsNullOrWhiteSpace(deviceSerial))
+            {
+                _errorMessage = "Unable to add log entry because required data was unavailable.";
+                return;
+            }
+
+            var now = DateTimeOffset.Now;
+            var recordDate = DateTime.Now.Date;
+            var logType = LogTypes[_random.Next(LogTypes.Length)];
+
+            await db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO DeviceLogs
+    (Id, DateCreated, IsDeleted, RecordDate, TimeLogStamp, AccessNumber, DeviceSerialNumber, CardNo, SiteCode, LinkId, Event, EventAddress, LogType, VerifyMode, [Index], HasMask, Temperature, IsNotified)
+VALUES
+    ({Guid.NewGuid()}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, {(string?)null}, {(int?)null}, {"20"}, {"1"}, {logType}, {"200"}, 0, {(bool?)null}, {(float?)null}, {(bool?)null});");
+
+            await LoadRecentLogsAsync(db);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Unable to add log entry: {ex.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task LoadRecentLogsAsync(AccessControlDbContext? db = null)
+    {
+        try
+        {
+            await using var ownedDb = db is null ? await DbFactory.CreateDbContextAsync() : null;
+            var activeDb = db ?? ownedDb!;
+
+            _deviceLogs = await activeDb.Database.SqlQueryRaw<DeviceLogListItem>(@"
+SELECT TOP (20)
+    Id,
+    TimeLogStamp,
+    AccessNumber,
+    DeviceSerialNumber,
+    LogType
+FROM DeviceLogs
+WHERE IsDeleted = 0
+ORDER BY TimeLogStamp DESC;")
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _deviceLogs = new List<DeviceLogListItem>();
+            _errorMessage = $"Unable to load device logs: {ex.Message}";
+        }
+    }
+
+    private static async Task<string?> PickRandomValueAsync(AccessControlDbContext db, string sql)
+    {
+        return await db.Database.SqlQueryRaw<string>(sql).FirstOrDefaultAsync();
+    }
+
+    private sealed class DeviceLogListItem
+    {
+        public Guid Id { get; set; }
+        public DateTimeOffset TimeLogStamp { get; set; }
+        public string? AccessNumber { get; set; }
+        public string? DeviceSerialNumber { get; set; }
+        public string? LogType { get; set; }
+    }
+}
