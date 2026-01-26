@@ -1,10 +1,15 @@
+using Microsoft.EntityFrameworkCore;
 using SentryGate.Components;
+using SentryGate.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddDbContextFactory<AccessControlDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("AccessControlDb")));
 
 var app = builder.Build();
 
