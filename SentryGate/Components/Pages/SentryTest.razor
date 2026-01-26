@@ -1,4 +1,4 @@
-@page "/sentry-test"
+@page "/sentrytest"
 @using Microsoft.EntityFrameworkCore
 @using SentryGate.Data
 @inject IDbContextFactory<AccessControlDbContext> DbFactory
@@ -78,9 +78,9 @@
 
             await db.Database.ExecuteSqlInterpolatedAsync($@"
 INSERT INTO DeviceLogs
-    (Id, DateCreated, IsDeleted, RecordDate, TimeLogStamp, AccessNumber, DeviceSerialNumber, CardNo, SiteCode, LinkId, Event, EventAddress, LogType, VerifyMode, [Index], HasMask, Temperature, IsNotified)
+(Id, DateCreated, IsDeleted, RecordDate, TimeLogStamp, AccessNumber, DeviceSerialNumber, CardNo, SiteCode, LinkId, Event, EventAddress, LogType, VerifyMode, [Index], HasMask, Temperature, IsNotified)
 VALUES
-    ({Guid.NewGuid()}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, {(string?)null}, {(int?)null}, {"20"}, {"1"}, {logType}, {"200"}, 0, {(bool?)null}, {(float?)null}, {(bool?)null});");
+({Guid.NewGuid()}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, {(string?)null}, {(int?)null}, {"20"}, {"1"}, {logType}, {"200"}, 0, {(bool?)null}, {(float?)null}, {(bool?)null});");
 
             await LoadRecentLogsAsync(db);
         }
@@ -103,15 +103,15 @@ VALUES
 
             _deviceLogs = await activeDb.Database.SqlQueryRaw<DeviceLogListItem>(@"
 SELECT TOP (20)
-    Id,
-    TimeLogStamp,
-    AccessNumber,
-    DeviceSerialNumber,
-    LogType
+Id,
+TimeLogStamp,
+AccessNumber,
+DeviceSerialNumber,
+LogType
 FROM DeviceLogs
 WHERE IsDeleted = 0
 ORDER BY TimeLogStamp DESC;")
-                .ToListAsync();
+            .ToListAsync();
         }
         catch (Exception ex)
         {
