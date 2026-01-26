@@ -1,4 +1,4 @@
-@page "/sentry-test"
+@page "/sentrytest"
 @using Microsoft.EntityFrameworkCore
 @using SentryGate.Data
 @inject IDbContextFactory<AccessControlDbContext> DbFactory
@@ -10,13 +10,6 @@
         Add Entry log
     </button>
 </p>
-
-@if (!string.IsNullOrWhiteSpace(_successMessage))
-{
-    <div class="alert alert-success" role="alert">
-        @_successMessage
-    </div>
-}
 
 @if (!string.IsNullOrWhiteSpace(_errorMessage))
 {
@@ -55,7 +48,6 @@
     private List<DeviceLogListItem> _deviceLogs = new();
     private bool _isBusy;
     private string? _errorMessage;
-    private string? _successMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -66,7 +58,6 @@
     {
         _isBusy = true;
         _errorMessage = null;
-        _successMessage = null;
 
         try
         {
@@ -87,11 +78,10 @@
 
             await db.Database.ExecuteSqlInterpolatedAsync($@"
 INSERT INTO DeviceLogs
-    (Id, DateCreated, IsDeleted, RecordDate, TimeLogStamp, AccessNumber, DeviceSerialNumber, CardNo, SiteCode, LinkId, Event, EventAddress, LogType, VerifyMode, [Index], HasMask, Temperature, IsNotified)
+(Id, DateCreated, IsDeleted, RecordDate, TimeLogStamp, AccessNumber, DeviceSerialNumber, CardNo, SiteCode, LinkId, Event, EventAddress, LogType, VerifyMode, [Index], HasMask, Temperature, IsNotified)
 VALUES
-    ({Guid.NewGuid()}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, {(string?)null}, {(int?)null}, {"20"}, {"1"}, {logType}, {"200"}, 0, {(bool?)null}, {(float?)null}, {(bool?)null});");
+({Guid.NewGuid()}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, {(string?)null}, {(int?)null}, {"20"}, {"1"}, {logType}, {"200"}, 0, {(bool?)null}, {(float?)null}, {(bool?)null});");
 
-            _successMessage = "New DeviceLogs record added successfully.";
             await LoadRecentLogsAsync(db);
         }
         catch (Exception ex)
@@ -113,15 +103,15 @@ VALUES
 
             _deviceLogs = await activeDb.Database.SqlQueryRaw<DeviceLogListItem>(@"
 SELECT TOP (20)
-    Id,
-    TimeLogStamp,
-    AccessNumber,
-    DeviceSerialNumber,
-    LogType
+Id,
+TimeLogStamp,
+AccessNumber,
+DeviceSerialNumber,
+LogType
 FROM DeviceLogs
 WHERE IsDeleted = 0
 ORDER BY TimeLogStamp DESC;")
-                .ToListAsync();
+            .ToListAsync();
         }
         catch (Exception ex)
         {
