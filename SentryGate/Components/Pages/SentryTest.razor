@@ -73,8 +73,8 @@
         {
             await using var db = await DbFactory.CreateDbContextAsync();
 
-            var accessNumber = await PickRandomValueAsync(db, "SELECT TOP 1 AccessNumber FROM Personnels WHERE IsDeleted = 0 ORDER BY NEWID()");
-            var deviceSerial = await PickRandomValueAsync(db, "SELECT TOP 1 SerialNumber FROM ZKDevices WHERE IsDeleted = 0 ORDER BY NEWID()");
+            var accessNumber = await PickRandomValueAsync(db, "SELECT TOP 1 AccessNumber AS Value FROM Personnels WHERE IsDeleted = 0 ORDER BY NEWID()");
+            var deviceSerial = await PickRandomValueAsync(db, "SELECT TOP 1 SerialNumber AS Value FROM ZKDevices WHERE IsDeleted = 0 ORDER BY NEWID()");
 
             if (string.IsNullOrWhiteSpace(accessNumber) || string.IsNullOrWhiteSpace(deviceSerial))
             {
