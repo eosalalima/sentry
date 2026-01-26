@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "zfOf+pOSHcE=",
+  "success": true,
+  "projectFilePath": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryGate\\SentryGate.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Eric Salalima\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.0\\microsoft.aspnetcore.app.internal.assets.10.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
