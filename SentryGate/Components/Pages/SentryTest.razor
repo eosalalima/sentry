@@ -7,7 +7,7 @@
 
 <p>
     <button class="btn btn-primary" @onclick="AddEntryLogAsync" disabled="@_isBusy">
-        Add Entry log
+        Add Entry Log
     </button>
 </p>
 
@@ -15,6 +15,13 @@
 {
     <div class="alert alert-warning" role="alert">
         @_errorMessage
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(_statusMessage))
+{
+    <div class="alert alert-success" role="alert">
+        @_statusMessage
     </div>
 }
 
@@ -48,6 +55,7 @@
     private List<DeviceLogListItem> _deviceLogs = new();
     private bool _isBusy;
     private string? _errorMessage;
+    private string? _statusMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -58,6 +66,7 @@
     {
         _isBusy = true;
         _errorMessage = null;
+        _statusMessage = null;
 
         try
         {
@@ -68,7 +77,7 @@
 
             if (string.IsNullOrWhiteSpace(accessNumber) || string.IsNullOrWhiteSpace(deviceSerial))
             {
-                _errorMessage = "Unable to add log entry because required data was unavailable.";
+                _errorMessage = "Unable to add log entry because required data was unavailable. Ensure Personnels and ZKDevices have active records.";
                 return;
             }
 
@@ -83,6 +92,7 @@ VALUES
 ({Guid.NewGuid()}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, {(string?)null}, {(int?)null}, {"20"}, {"1"}, {logType}, {"200"}, 0, {(bool?)null}, {(float?)null}, {(bool?)null});");
 
             await LoadRecentLogsAsync(db);
+            _statusMessage = $"Added a {logType} entry for access {accessNumber} on device {deviceSerial}.";
         }
         catch (Exception ex)
         {
@@ -91,6 +101,7 @@ VALUES
         finally
         {
             _isBusy = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
