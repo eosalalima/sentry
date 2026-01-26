@@ -6,8 +6,23 @@
 
 <h1>Sentry Test</h1>
 
+<div class="mb-3">
+    <label class="form-label" for="deviceSelect">Device</label>
+    <select id="deviceSelect" class="form-select" @bind="_selectedDeviceSerial" disabled="@(_isBusy || _devices.Count == 0)">
+        <option value="">Select a device...</option>
+        @foreach (var device in _devices)
+        {
+            <option value="@device.SerialNumber">@device.Name (@device.SerialNumber)</option>
+        }
+    </select>
+    @if (_devices.Count == 0)
+    {
+        <div class="form-text text-muted">No active devices were found.</div>
+    }
+</div>
+
 <p>
-    <button class="btn btn-primary" @onclick="AddEntryLogAsync" disabled="@_isBusy">
+    <button class="btn btn-primary" @onclick="AddEntryLogAsync" disabled="@(_isBusy || string.IsNullOrWhiteSpace(_selectedDeviceSerial))">
         Add Entry Log
     </button>
 </p>
@@ -53,13 +68,16 @@
 @code {
     private static readonly string[] LogTypes = ["IN", "OUT", "BREAK OUT"];
     private readonly Random _random = new();
+    private List<DeviceOption> _devices = new();
     private List<DeviceLogListItem> _deviceLogs = new();
     private bool _isBusy;
     private string? _errorMessage;
+    private string? _selectedDeviceSerial;
     private string? _statusMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadDevicesAsync();
         await LoadRecentLogsAsync();
     }
 
@@ -74,11 +92,17 @@
             await using var db = await DbFactory.CreateDbContextAsync();
 
             var accessNumber = await PickRandomValueAsync(db, "SELECT TOP 1 AccessNumber AS Value FROM Personnels WHERE IsDeleted = 0 ORDER BY NEWID()");
-            var deviceSerial = await PickRandomValueAsync(db, "SELECT TOP 1 SerialNumber AS Value FROM ZKDevices WHERE IsDeleted = 0 ORDER BY NEWID()");
+            var deviceSerial = _selectedDeviceSerial;
 
-            if (string.IsNullOrWhiteSpace(accessNumber) || string.IsNullOrWhiteSpace(deviceSerial))
+            if (string.IsNullOrWhiteSpace(accessNumber))
             {
-                _errorMessage = "Unable to add log entry because required data was unavailable. Ensure Personnels and ZKDevices have active records.";
+                _errorMessage = "Unable to add log entry because required data was unavailable. Ensure Personnels have active records.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceSerial))
+            {
+                _errorMessage = "Please select a device before adding a log entry.";
                 return;
             }
 
@@ -132,9 +156,34 @@ ORDER BY TimeLogStamp DESC;")
         }
     }
 
+    private async Task LoadDevicesAsync()
+    {
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            _devices = await db.Database.SqlQueryRaw<DeviceOption>(@"
+SELECT SerialNumber, Name
+FROM ZKDevices
+WHERE IsDeleted = 0
+ORDER BY Name;")
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _devices = new List<DeviceOption>();
+            _errorMessage = $"Unable to load devices: {ex.Message}";
+        }
+    }
+
     private static async Task<string?> PickRandomValueAsync(AccessControlDbContext db, string sql)
     {
         return await db.Database.SqlQueryRaw<string>(sql).FirstOrDefaultAsync();
+    }
+
+    private sealed class DeviceOption
+    {
+        public string? SerialNumber { get; set; }
+        public string? Name { get; set; }
     }
 
     private sealed class DeviceLogListItem
