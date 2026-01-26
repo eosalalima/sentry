@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SentryGate")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+47cf4574452a29ddce3a0bc9d2f578d98606a17e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3dd01a03ae959acbb4a7aa8588d731a668583938")]
 [assembly: System.Reflection.AssemblyProductAttribute("SentryGate")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SentryGate")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
