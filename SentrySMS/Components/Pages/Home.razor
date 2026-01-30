@@ -1,0 +1,161 @@
+@page "/"
+@inject IOptionsSnapshot<GsmSettings> SettingsSnapshot
+@inject SettingsService SettingsService
+@inject GsmService GsmService
+@inject ToastService ToastService
+
+<div class="content-grid">
+    <section class="card">
+        <h2>GSM Device Configuration</h2>
+        <p>Configure the serial connection used for AT commands.</p>
+
+        <EditForm Model="@_settingsModel" OnValidSubmit="SaveSettings">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="form-grid">
+                <label>
+                    Serial Port
+                    <InputText class="input" @bind-Value="_settingsModel.SerialPort" placeholder="COM3" />
+                </label>
+
+                <label>
+                    Baud Rate
+                    <InputNumber class="input" @bind-Value="_settingsModel.BaudRate" />
+                </label>
+
+                <label>
+                    Data Bits
+                    <InputNumber class="input" @bind-Value="_settingsModel.DataBits" />
+                </label>
+
+                <label>
+                    Parity
+                    <InputSelect class="input" @bind-Value="_settingsModel.Parity">
+                        @foreach (var value in Enum.GetValues<Parity>())
+                        {
+                            <option value="@value">@value</option>
+                        }
+                    </InputSelect>
+                </label>
+
+                <label>
+                    Stop Bits
+                    <InputSelect class="input" @bind-Value="_settingsModel.StopBits">
+                        @foreach (var value in Enum.GetValues<StopBits>())
+                        {
+                            <option value="@value">@value</option>
+                        }
+                    </InputSelect>
+                </label>
+
+                <label>
+                    Handshake
+                    <InputSelect class="input" @bind-Value="_settingsModel.Handshake">
+                        @foreach (var value in Enum.GetValues<Handshake>())
+                        {
+                            <option value="@value">@value</option>
+                        }
+                    </InputSelect>
+                </label>
+
+                <label>
+                    Read Timeout (ms)
+                    <InputNumber class="input" @bind-Value="_settingsModel.ReadTimeout" />
+                </label>
+
+                <label>
+                    Write Timeout (ms)
+                    <InputNumber class="input" @bind-Value="_settingsModel.WriteTimeout" />
+                </label>
+
+                <label>
+                    New Line Sequence
+                    <InputText class="input" @bind-Value="_settingsModel.NewLine" />
+                </label>
+            </div>
+
+            <div class="button-row">
+                <button class="btn primary" type="submit">Save Settings</button>
+                <button class="btn" type="button" @onclick="DetectDevice">Detect Device</button>
+            </div>
+        </EditForm>
+    </section>
+
+    <section class="card">
+        <h2>Send SMS</h2>
+        <p>Send a text message using the configured GSM device.</p>
+
+        <EditForm Model="@_smsMessage" OnValidSubmit="SendSms">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <label>
+                Mobile Number
+                <InputText class="input" @bind-Value="_smsMessage.MobileNumber" placeholder="+15551234567" />
+            </label>
+
+            <label>
+                Text Message
+                <InputTextArea class="input textarea" @bind-Value="_smsMessage.TextMessage" rows="5" />
+            </label>
+
+            <div class="button-row">
+                <button class="btn primary" type="submit">Send Message</button>
+            </div>
+        </EditForm>
+    </section>
+</div>
+
+@code {
+    private GsmSettings _settingsModel = new();
+    private SmsMessage _smsMessage = new();
+
+    protected override void OnInitialized()
+    {
+        _settingsModel = new GsmSettings
+        {
+            SerialPort = SettingsSnapshot.Value.SerialPort,
+            BaudRate = SettingsSnapshot.Value.BaudRate,
+            DataBits = SettingsSnapshot.Value.DataBits,
+            Parity = SettingsSnapshot.Value.Parity,
+            StopBits = SettingsSnapshot.Value.StopBits,
+            Handshake = SettingsSnapshot.Value.Handshake,
+            ReadTimeout = SettingsSnapshot.Value.ReadTimeout,
+            WriteTimeout = SettingsSnapshot.Value.WriteTimeout,
+            NewLine = SettingsSnapshot.Value.NewLine
+        };
+    }
+
+    private async Task SaveSettings()
+    {
+        await SettingsService.SaveGsmSettingsAsync(_settingsModel);
+        ToastService.ShowToast("Settings saved", "GSM configuration updated in appsettings.json.", ToastLevel.Success);
+    }
+
+    private async Task DetectDevice()
+    {
+        var result = await GsmService.DetectDeviceAsync(_settingsModel);
+        if (result.Success)
+        {
+            ToastService.ShowToast("Device detected", $"AT response: {result.Response}", ToastLevel.Success);
+        }
+        else
+        {
+            ToastService.ShowToast("Device not detected", result.Response, ToastLevel.Warning);
+        }
+    }
+
+    private async Task SendSms()
+    {
+        var result = await GsmService.SendSmsAsync(_smsMessage);
+        if (result.Success)
+        {
+            ToastService.ShowToast("Message sent", "SMS successfully delivered to the GSM module.", ToastLevel.Success);
+        }
+        else
+        {
+            ToastService.ShowToast("Message failed", result.Response, ToastLevel.Error);
+        }
+    }
+}
