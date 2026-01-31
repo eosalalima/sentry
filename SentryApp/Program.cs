@@ -4,8 +4,14 @@ using SentryApp.Services;
 using SentryApp.Components;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (!builder.Environment.IsDevelopment())
+{
+    StaticWebAssetsLoader.UseStaticWebAssets(builder.Environment, builder.Configuration);
+}
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
