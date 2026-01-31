@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "V35i2k/00a4=",
+  "dgSpecHash": "NwRfyGzfEmU=",
   "success": true,
-  "projectFilePath": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryApp\\SentryApp.csproj",
+  "projectFilePath": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryAPp\\SentryApp.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Eric Salalima\\.nuget\\packages\\azure.core\\1.47.1\\azure.core.1.47.1.nupkg.sha512",
     "C:\\Users\\Eric Salalima\\.nuget\\packages\\azure.identity\\1.14.2\\azure.identity.1.14.2.nupkg.sha512",
