@@ -223,7 +223,11 @@
     private TurnstilePollingController PollingController { get; set; } = default!;
 
     private const string AllDevicesValue = "1";
+<<<<<<< HEAD
     private const string SelectedDeviceStorageKey = "SelectedDeviceSerial";
+=======
+    private const string SelectedDeviceSerialStorageKey = "SelectedDeviceSerial";
+>>>>>>> main
 
     private bool _showSettingsModal;
     private string _connectionString = string.Empty;
@@ -278,13 +282,16 @@
         .OrderBy(d => d.Name)
         .ToListAsync();
 
-        if (_devices.Count > 0)
-        {
-            if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
-                _selectedDeviceSerial = _devices[0].SerialNumber;
-            else if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
-                _selectedDeviceSerial = _devices[0].SerialNumber;
-        }
+        NormalizeSelectedDeviceSerial();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await EnsureSelectedDeviceSerialAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task BrowsePhotosPathAsync()
@@ -315,6 +322,7 @@
         }
         else
         {
+<<<<<<< HEAD
             await EnsureSelectedDeviceSerialInStorageAsync();
             if (!await CanConnectToDatabaseAsync())
             {
@@ -323,6 +331,9 @@
             }
 
             await ShowToastAsync("Service is running successfully!", "info");
+=======
+            await EnsureSelectedDeviceSerialAsync();
+>>>>>>> main
             PollingController.TryStart();
         }
 
@@ -340,7 +351,15 @@
             _highlightDisplayDurationMs = Math.Max(1, _highlightDisplayDurationMs);
             _lookbackSecondsOnStart = Math.Max(0, _lookbackSecondsOnStart);
             _maxRowsPerPoll = Math.Max(1, _maxRowsPerPoll);
+<<<<<<< HEAD
             _smsComPortNumber = Math.Max(1, _smsComPortNumber);
+=======
+            _selectedDeviceSerial = string.IsNullOrWhiteSpace(_selectedDeviceSerial)
+                ? AllDevicesValue
+                : _selectedDeviceSerial;
+
+            await SetSelectedDeviceSerialAsync(_selectedDeviceSerial);
+>>>>>>> main
 
             await UpdateAppSettingsAsync();
             await UpdateSelectedDeviceStorageAsync();
@@ -495,6 +514,7 @@
             Console.Error.WriteLine($"Failed to load settings: {ex}");
         }
 
+<<<<<<< HEAD
         await EnsureSelectedDeviceSerialInStorageAsync();
 
         if (_devices.Count > 0)
@@ -504,6 +524,13 @@
             else if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
                 _selectedDeviceSerial = _devices[0].SerialNumber;
         }
+=======
+        var storedSerial = await GetSelectedDeviceSerialAsync();
+        if (!string.IsNullOrWhiteSpace(storedSerial))
+            _selectedDeviceSerial = storedSerial;
+
+        NormalizeSelectedDeviceSerial();
+>>>>>>> main
     }
 
     private void OnPollingStatusChanged(bool isActive)
@@ -567,6 +594,7 @@
         }
     }
 
+<<<<<<< HEAD
     private async Task EnsureSelectedDeviceSerialInStorageAsync()
     {
         try
@@ -643,6 +671,69 @@
         _toastCts?.Cancel();
         _showToast = false;
         InvokeAsync(StateHasChanged);
+=======
+    private async Task<string?> GetSelectedDeviceSerialAsync()
+    {
+        try
+        {
+            return await JsRuntime.InvokeAsync<string?>("sentryApp.getLocalStorage", SelectedDeviceSerialStorageKey);
+        }
+        catch (JSException)
+        {
+            return null;
+        }
+    }
+
+    private async Task SetSelectedDeviceSerialAsync(string value)
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("sentryApp.setLocalStorage", SelectedDeviceSerialStorageKey, value);
+        }
+        catch (JSException)
+        {
+            // ignore local storage failures
+        }
+    }
+
+    private async Task EnsureSelectedDeviceSerialAsync()
+    {
+        string? storedSerial;
+
+        try
+        {
+            storedSerial = await JsRuntime.InvokeAsync<string>(
+                "sentryApp.ensureLocalStorageValue",
+                SelectedDeviceSerialStorageKey,
+                AllDevicesValue);
+        }
+        catch (JSException)
+        {
+            storedSerial = null;
+        }
+
+        _selectedDeviceSerial = string.IsNullOrWhiteSpace(storedSerial)
+            ? AllDevicesValue
+            : storedSerial;
+
+        NormalizeSelectedDeviceSerial();
+        await SetSelectedDeviceSerialAsync(_selectedDeviceSerial);
+    }
+
+    private void NormalizeSelectedDeviceSerial()
+    {
+        if (_devices.Count == 0)
+            return;
+
+        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
+        {
+            _selectedDeviceSerial = _devices[0].SerialNumber;
+            return;
+        }
+
+        if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
+            _selectedDeviceSerial = _devices[0].SerialNumber;
+>>>>>>> main
     }
 
     private static bool TryReadJsonValue<T>(JsonNode? node, out T value)

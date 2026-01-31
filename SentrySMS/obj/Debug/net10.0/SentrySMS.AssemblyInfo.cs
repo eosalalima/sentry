@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SentrySMS")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9a4b51981fb707fedd1e9db603431fc7687a43f7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bba34c2bec05d6d820f4ff50598dc23551e4585a")]
 [assembly: System.Reflection.AssemblyProductAttribute("SentrySMS")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SentrySMS")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

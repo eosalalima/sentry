@@ -3,6 +3,7 @@
 @inject TurnstileLogState LogState
 
 <div class="feed-grid">
+<<<<<<< HEAD
     @{
         var visibleItems = FilteredItems;
     }
@@ -10,12 +11,17 @@
     @for (var index = visibleItems.Count - 1; index >= 0; index--)
     {
         var item = visibleItems[index];
+=======
+    @foreach (var item in FilteredItems.Reverse())
+    {
+>>>>>>> main
         <FeedCard Entry="item.Entry" />
     }
 </div>
 
 @code {
     private const string AllDevicesValue = "1";
+<<<<<<< HEAD
     private const string SelectedDeviceStorageKey = "SelectedDeviceSerial";
 
     [Parameter] public IReadOnlyList<TurnstileQueueItem> Items { get; set; } = Array.Empty<TurnstileQueueItem>();
@@ -59,5 +65,21 @@
             return true;
 
         return string.Equals(entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
+=======
+
+    [Parameter] public IReadOnlyList<TurnstileQueueItem> Items { get; set; } = Array.Empty<TurnstileQueueItem>();
+    [Parameter] public string SelectedDeviceSerial { get; set; } = AllDevicesValue;
+
+    private IEnumerable<TurnstileQueueItem> FilteredItems =>
+        Items.Where(item => ShouldDisplay(item.Entry));
+
+    private bool ShouldDisplay(TurnstileLogEntry entry)
+    {
+        if (SelectedDeviceSerial == AllDevicesValue)
+            return true;
+
+        return !string.IsNullOrWhiteSpace(entry.DeviceSerialNumber)
+            && entry.DeviceSerialNumber == SelectedDeviceSerial;
+>>>>>>> main
     }
 }
