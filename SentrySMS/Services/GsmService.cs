@@ -53,12 +53,16 @@ public class GsmService
             try
             {
                 port.Open();
-                var handshake = new StringBuilder();
-                handshake.AppendLine(SendCommand(port, "AT", cancellationToken));
-                handshake.AppendLine(SendCommand(port, "AT+CMGF=1", cancellationToken));
+                SendCommand(port, "AT", cancellationToken);
+                SendCommand(port, "AT+CMGF=1", cancellationToken);
 
                 port.WriteLine($"AT+CMGS=\"{message.MobileNumber}\"");
-                Thread.Sleep(500);
+                var prompt = ReadUntilPrompt(port, cancellationToken);
+                if (prompt.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+                {
+                    return new GsmResult(false, prompt);
+                }
+
                 port.Write(message.TextMessage + char.ConvertFromUtf32(26));
 
                 var response = ReadResponse(port, cancellationToken);
@@ -104,6 +108,38 @@ public class GsmService
                     buffer.Append(chunk);
                     if (buffer.ToString().Contains("OK", StringComparison.OrdinalIgnoreCase) ||
                         buffer.ToString().Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (TimeoutException)
+            {
+                break;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        return buffer.Length == 0 ? "No response received." : buffer.ToString();
+    }
+
+    private static string ReadUntilPrompt(SerialPort port, CancellationToken cancellationToken)
+    {
+        var buffer = new StringBuilder();
+        var stopAt = DateTime.UtcNow.AddMilliseconds(port.ReadTimeout);
+
+        while (DateTime.UtcNow < stopAt && !cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                var chunk = port.ReadExisting();
+                if (!string.IsNullOrEmpty(chunk))
+                {
+                    buffer.Append(chunk);
+                    var current = buffer.ToString();
+                    if (current.Contains(">", StringComparison.OrdinalIgnoreCase) ||
+                        current.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
                     {
                         break;
                     }
