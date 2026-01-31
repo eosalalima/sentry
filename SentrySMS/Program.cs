@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddAntiforgery();
 builder.Services.Configure<GsmSettings>(builder.Configuration.GetSection(GsmSettings.SectionName));
 builder.Services.AddSingleton<SettingsService>();
 builder.Services.AddSingleton<GsmService>();
@@ -25,7 +26,6 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode()
-    .DisableAntiforgery();
+    .AddInteractiveServerRenderMode();
 
 app.Run();

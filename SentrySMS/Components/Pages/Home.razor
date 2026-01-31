@@ -9,7 +9,7 @@
         <h2>GSM Device Configuration</h2>
         <p>Configure the serial connection used for AT commands.</p>
 
-        <EditForm Model="@_settingsModel" OnValidSubmit="SaveSettings">
+        <EditForm Model="@_settingsModel" OnValidSubmit="SaveSettings" FormName="gsm-settings">
             <AntiforgeryToken />
             <DataAnnotationsValidator />
             <ValidationSummary />
@@ -87,7 +87,7 @@
         <h2>Send SMS</h2>
         <p>Send a text message using the configured GSM device.</p>
 
-        <EditForm Model="@_smsMessage" OnValidSubmit="SendSms">
+        <EditForm Model="@_smsMessage" OnValidSubmit="SendSms" FormName="sms-message">
             <AntiforgeryToken />
             <DataAnnotationsValidator />
             <ValidationSummary />
