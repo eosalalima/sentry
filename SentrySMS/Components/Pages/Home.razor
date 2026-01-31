@@ -10,6 +10,7 @@
         <p>Configure the serial connection used for AT commands.</p>
 
         <EditForm Model="@_settingsModel" OnValidSubmit="SaveSettings">
+            <AntiforgeryToken />
             <DataAnnotationsValidator />
             <ValidationSummary />
 
@@ -87,6 +88,7 @@
         <p>Send a text message using the configured GSM device.</p>
 
         <EditForm Model="@_smsMessage" OnValidSubmit="SendSms">
+            <AntiforgeryToken />
             <DataAnnotationsValidator />
             <ValidationSummary />
 
