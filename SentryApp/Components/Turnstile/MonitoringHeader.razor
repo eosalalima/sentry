@@ -1,6 +1,8 @@
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Configuration
 @using Microsoft.AspNetCore.Hosting
+@using System.Linq
+@using System.Text
 @using System.Text.Json
 @using System.Text.Json.Nodes
 @using System.IO.Ports
@@ -223,11 +225,7 @@
     private TurnstilePollingController PollingController { get; set; } = default!;
 
     private const string AllDevicesValue = "1";
-<<<<<<< HEAD
-    private const string SelectedDeviceStorageKey = "SelectedDeviceSerial";
-=======
     private const string SelectedDeviceSerialStorageKey = "SelectedDeviceSerial";
->>>>>>> main
 
     private bool _showSettingsModal;
     private string _connectionString = string.Empty;
@@ -285,15 +283,6 @@
         NormalizeSelectedDeviceSerial();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender)
-            return;
-
-        await EnsureSelectedDeviceSerialAsync();
-        await InvokeAsync(StateHasChanged);
-    }
-
     private async Task BrowsePhotosPathAsync()
     {
         try
@@ -310,8 +299,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-            await EnsureSelectedDeviceSerialInStorageAsync();
+        if (!firstRender)
+            return;
+
+        await EnsureSelectedDeviceSerialAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task TogglePollingServiceAsync()
@@ -322,18 +314,7 @@
         }
         else
         {
-<<<<<<< HEAD
-            await EnsureSelectedDeviceSerialInStorageAsync();
-            if (!await CanConnectToDatabaseAsync())
-            {
-                await ShowToastAsync("Cannot run the service, unable to connect to the database..", "danger");
-                return;
-            }
-
-            await ShowToastAsync("Service is running successfully!", "info");
-=======
             await EnsureSelectedDeviceSerialAsync();
->>>>>>> main
             PollingController.TryStart();
         }
 
@@ -351,18 +332,14 @@
             _highlightDisplayDurationMs = Math.Max(1, _highlightDisplayDurationMs);
             _lookbackSecondsOnStart = Math.Max(0, _lookbackSecondsOnStart);
             _maxRowsPerPoll = Math.Max(1, _maxRowsPerPoll);
-<<<<<<< HEAD
             _smsComPortNumber = Math.Max(1, _smsComPortNumber);
-=======
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(_selectedDeviceSerial)
                 ? AllDevicesValue
                 : _selectedDeviceSerial;
 
             await SetSelectedDeviceSerialAsync(_selectedDeviceSerial);
->>>>>>> main
 
             await UpdateAppSettingsAsync();
-            await UpdateSelectedDeviceStorageAsync();
             EnsureSelectedDeviceSerialIsValid();
 
             _showSettingsModal = false;
@@ -413,28 +390,23 @@
         try
         {
             var portName = $"COM{_smsComPortNumber}";
-            await Task.Run(() =>
+            if (!SerialPort.GetPortNames().Any(port => string.Equals(port, portName, StringComparison.OrdinalIgnoreCase)))
             {
-                using var serialPort = new SerialPort(portName, 9600, Parity.None, 8, StopBits.One)
-                {
-                    ReadTimeout = 5000,
-                    WriteTimeout = 5000,
-                    NewLine = "\r"
-                };
+                await ShowToastAsync($"No device detected on {portName}.", "danger");
+                return;
+            }
 
-                serialPort.Open();
-                serialPort.Write("AT\r");
-                Thread.Sleep(500);
-                serialPort.Write("AT+CMGF=1\r");
-                Thread.Sleep(500);
-                serialPort.Write($"AT+CMGS=\"{_smsTestMobileNumber}\"\r");
-                Thread.Sleep(500);
-                serialPort.Write(_smsTestMessage + "\x1A");
-                Thread.Sleep(3000);
-            });
+            var result = await Task.Run(() => SendSms(portName, _smsTestMobileNumber, _smsTestMessage));
 
-            _showSmsTestModal = false;
-            await ShowToastAsync("Test message sent successfully.", "success");
+            if (result.Success)
+            {
+                _showSmsTestModal = false;
+                await ShowToastAsync("Test message sent successfully.", "success");
+            }
+            else
+            {
+                await ShowToastAsync(result.Response, "danger");
+            }
         }
         catch (Exception ex)
         {
@@ -514,23 +486,11 @@
             Console.Error.WriteLine($"Failed to load settings: {ex}");
         }
 
-<<<<<<< HEAD
-        await EnsureSelectedDeviceSerialInStorageAsync();
-
-        if (_devices.Count > 0)
-        {
-            if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
-                _selectedDeviceSerial = _devices[0].SerialNumber;
-            else if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
-                _selectedDeviceSerial = _devices[0].SerialNumber;
-        }
-=======
         var storedSerial = await GetSelectedDeviceSerialAsync();
         if (!string.IsNullOrWhiteSpace(storedSerial))
             _selectedDeviceSerial = storedSerial;
 
         NormalizeSelectedDeviceSerial();
->>>>>>> main
     }
 
     private void OnPollingStatusChanged(bool isActive)
@@ -594,84 +554,6 @@
         }
     }
 
-<<<<<<< HEAD
-    private async Task EnsureSelectedDeviceSerialInStorageAsync()
-    {
-        try
-        {
-            var storedSerial = await JsRuntime.InvokeAsync<string?>("localStorage.getItem", SelectedDeviceStorageKey);
-            if (string.IsNullOrWhiteSpace(storedSerial))
-            {
-                _selectedDeviceSerial = AllDevicesValue;
-                await JsRuntime.InvokeVoidAsync("localStorage.setItem", SelectedDeviceStorageKey, _selectedDeviceSerial);
-            }
-            else
-            {
-                _selectedDeviceSerial = storedSerial;
-            }
-        }
-        catch (JSException)
-        {
-            if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
-                _selectedDeviceSerial = AllDevicesValue;
-        }
-
-        EnsureSelectedDeviceSerialIsValid();
-    }
-
-    private async Task UpdateSelectedDeviceStorageAsync()
-    {
-        try
-        {
-            await JsRuntime.InvokeVoidAsync("localStorage.setItem", SelectedDeviceStorageKey, _selectedDeviceSerial);
-        }
-        catch (JSException)
-        {
-            Console.Error.WriteLine("Local storage is not available.");
-        }
-    }
-
-    private async Task<bool> CanConnectToDatabaseAsync()
-    {
-        try
-        {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            return await db.Database.CanConnectAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Database connection check failed: {ex}");
-            return false;
-        }
-    }
-
-    private async Task ShowToastAsync(string message, string variant)
-    {
-        _toastCts?.Cancel();
-        _toastCts = new CancellationTokenSource();
-
-        _toastMessage = message;
-        _toastVariant = variant;
-        _showToast = true;
-        await InvokeAsync(StateHasChanged);
-
-        try
-        {
-            await Task.Delay(TimeSpan.FromSeconds(4), _toastCts.Token);
-            HideToast();
-        }
-        catch (TaskCanceledException)
-        {
-            // ignored
-        }
-    }
-
-    private void HideToast()
-    {
-        _toastCts?.Cancel();
-        _showToast = false;
-        InvokeAsync(StateHasChanged);
-=======
     private async Task<string?> GetSelectedDeviceSerialAsync()
     {
         try
@@ -733,8 +615,140 @@
 
         if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
             _selectedDeviceSerial = _devices[0].SerialNumber;
->>>>>>> main
     }
+
+    private async Task ShowToastAsync(string message, string variant)
+    {
+        _toastCts?.Cancel();
+        _toastCts = new CancellationTokenSource();
+
+        _toastMessage = message;
+        _toastVariant = variant;
+        _showToast = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(4), _toastCts.Token);
+            HideToast();
+        }
+        catch (TaskCanceledException)
+        {
+            // ignored
+        }
+    }
+
+    private void HideToast()
+    {
+        _toastCts?.Cancel();
+        _showToast = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static SmsSendResult SendSms(string portName, string mobileNumber, string message)
+    {
+        using var port = new SerialPort(portName, 9600, Parity.None, 8, StopBits.One)
+        {
+            Handshake = Handshake.None,
+            ReadTimeout = 2000,
+            WriteTimeout = 2000,
+            NewLine = "\r\n"
+        };
+
+        try
+        {
+            port.Open();
+            SendCommand(port, "AT");
+            SendCommand(port, "AT+CMGF=1");
+
+            port.WriteLine($"AT+CMGS=\"{mobileNumber}\"");
+            var prompt = ReadUntilPrompt(port);
+            if (prompt.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+            {
+                return new SmsSendResult(false, prompt);
+            }
+
+            port.Write(message + char.ConvertFromUtf32(26));
+            var response = ReadResponse(port);
+            var success = response.Contains("OK", StringComparison.OrdinalIgnoreCase);
+            return new SmsSendResult(success, response);
+        }
+        catch (Exception ex)
+        {
+            return new SmsSendResult(false, $"SMS send failed: {ex.Message}");
+        }
+    }
+
+    private static string SendCommand(SerialPort port, string command)
+    {
+        port.WriteLine(command);
+        return ReadResponse(port);
+    }
+
+    private static string ReadResponse(SerialPort port)
+    {
+        var buffer = new StringBuilder();
+        var stopAt = DateTime.UtcNow.AddMilliseconds(port.ReadTimeout);
+
+        while (DateTime.UtcNow < stopAt)
+        {
+            try
+            {
+                var chunk = port.ReadExisting();
+                if (!string.IsNullOrEmpty(chunk))
+                {
+                    buffer.Append(chunk);
+                    if (buffer.ToString().Contains("OK", StringComparison.OrdinalIgnoreCase) ||
+                        buffer.ToString().Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (TimeoutException)
+            {
+                break;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        return buffer.Length == 0 ? "No response received." : buffer.ToString();
+    }
+
+    private static string ReadUntilPrompt(SerialPort port)
+    {
+        var buffer = new StringBuilder();
+        var stopAt = DateTime.UtcNow.AddMilliseconds(port.ReadTimeout);
+
+        while (DateTime.UtcNow < stopAt)
+        {
+            try
+            {
+                var chunk = port.ReadExisting();
+                if (!string.IsNullOrEmpty(chunk))
+                {
+                    buffer.Append(chunk);
+                    var current = buffer.ToString();
+                    if (current.Contains(">", StringComparison.OrdinalIgnoreCase) ||
+                        current.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (TimeoutException)
+            {
+                break;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        return buffer.Length == 0 ? "No response received." : buffer.ToString();
+    }
+
+    private sealed record SmsSendResult(bool Success, string Response);
 
     private static bool TryReadJsonValue<T>(JsonNode? node, out T value)
     {
