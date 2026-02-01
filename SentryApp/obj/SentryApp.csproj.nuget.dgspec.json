@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryAPp\\SentryApp.csproj": {}
+    "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryApp\\SentryApp.csproj": {}
   },
   "projects": {
-    "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryAPp\\SentryApp.csproj": {
+    "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryApp\\SentryApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryAPp\\SentryApp.csproj",
+        "projectUniqueName": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryApp\\SentryApp.csproj",
         "projectName": "SentryApp",
-        "projectPath": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryAPp\\SentryApp.csproj",
+        "projectPath": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryApp\\SentryApp.csproj",
         "packagesPath": "C:\\Users\\Eric Salalima\\.nuget\\packages\\",
-        "outputPath": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryAPp\\obj\\",
+        "outputPath": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\SentryApp\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
