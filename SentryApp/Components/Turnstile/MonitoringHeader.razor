@@ -177,8 +177,7 @@
 
                     <div class="mb-3">
                         <label class="form-label" for="smsTestMessage">Message</label>
-                        <textarea class="form-control" id="smsTestMessage" rows="4"
-                            @bind="_smsTestMessage"></textarea>
+                        <textarea class="form-control" id="smsTestMessage" rows="4" @bind="_smsTestMessage"></textarea>
                     </div>
                 </div>
 
@@ -334,8 +333,8 @@
             _maxRowsPerPoll = Math.Max(1, _maxRowsPerPoll);
             _smsComPortNumber = Math.Max(1, _smsComPortNumber);
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(_selectedDeviceSerial)
-                ? AllDevicesValue
-                : _selectedDeviceSerial;
+            ? AllDevicesValue
+            : _selectedDeviceSerial;
 
             await SetSelectedDeviceSerialAsync(_selectedDeviceSerial);
 
@@ -445,17 +444,18 @@
                 var json = await File.ReadAllTextAsync(appSettingsPath);
                 if (JsonNode.Parse(json) is JsonObject root)
                 {
-                    if (root["ConnectionStrings"] is JsonObject cs && TryReadJsonValue(cs["AccessControlDb"], out string? connectionString))
+                    if (root["ConnectionStrings"] is JsonObject cs && TryReadJsonValue(cs["AccessControlDb"], out string? connectionString)
+                    && connectionString != null)
                         _connectionString = connectionString;
 
                     if (root["PhotoOptions"] is JsonObject photoOptions && TryReadJsonValue(photoOptions["PhotoDirectory"], out string?
-                    photoDirectory))
+                    photoDirectory) && photoDirectory != null)
                         _photosPath = photoDirectory;
 
                     if (TryReadJsonValue(root["IsLiveMode"], out bool liveMode))
                         _isLiveMode = liveMode;
 
-                    if (TryReadJsonValue(root["SelectedDeviceSerial"], out string? deviceSerial))
+                    if (TryReadJsonValue(root["SelectedDeviceSerial"], out string? deviceSerial) && deviceSerial != null)
                         _selectedDeviceSerial = deviceSerial;
 
                     if (root["TurnstilePolling"] is JsonObject turnstilePolling)
@@ -585,9 +585,9 @@
         try
         {
             storedSerial = await JsRuntime.InvokeAsync<string>(
-                "sentryApp.ensureLocalStorageValue",
-                SelectedDeviceSerialStorageKey,
-                AllDevicesValue);
+            "sentryApp.ensureLocalStorageValue",
+            SelectedDeviceSerialStorageKey,
+            AllDevicesValue);
         }
         catch (JSException)
         {
@@ -595,8 +595,8 @@
         }
 
         _selectedDeviceSerial = string.IsNullOrWhiteSpace(storedSerial)
-            ? AllDevicesValue
-            : storedSerial;
+        ? AllDevicesValue
+        : storedSerial;
 
         NormalizeSelectedDeviceSerial();
         await SetSelectedDeviceSerialAsync(_selectedDeviceSerial);
@@ -699,7 +699,7 @@
                 {
                     buffer.Append(chunk);
                     if (buffer.ToString().Contains("OK", StringComparison.OrdinalIgnoreCase) ||
-                        buffer.ToString().Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+                    buffer.ToString().Contains("ERROR", StringComparison.OrdinalIgnoreCase))
                     {
                         break;
                     }
@@ -731,7 +731,7 @@
                     buffer.Append(chunk);
                     var current = buffer.ToString();
                     if (current.Contains(">", StringComparison.OrdinalIgnoreCase) ||
-                        current.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+                    current.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
                     {
                         break;
                     }

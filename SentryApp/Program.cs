@@ -106,9 +106,9 @@ static class SmsRequestParser
         if (request.HasFormContentType)
         {
             var form = await request.ReadFormAsync(cancellationToken);
-            var to = FirstNonEmpty(form["to"], form["phone"], form["phoneNumber"], form["recipient"]);
-            var message = FirstNonEmpty(form["message"], form["body"], form["text"]);
-            return Build(to, message);
+            var formTo = FirstNonEmpty(form["to"], form["phone"], form["phoneNumber"], form["recipient"]);
+            var formMessage = FirstNonEmpty(form["message"], form["body"], form["text"]);
+            return Build(formTo, formMessage);
         }
 
         if (request.ContentLength is null or 0)
