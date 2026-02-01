@@ -6,12 +6,7 @@ public sealed class TurnstileLogState : IDisposable
 {
     private const string AllDevicesValue = "1";
     private const int MaxQueueItems = 12;
-<<<<<<< HEAD
     private readonly int _defaultHighlightDisplayDurationMs;
-=======
-    private const int DefaultHighlightDisplayDurationMs = 3000;
-    private const string AllDevicesValue = "1";
->>>>>>> main
 
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
@@ -43,7 +38,6 @@ public sealed class TurnstileLogState : IDisposable
     {
         lock (_lock)
         {
-<<<<<<< HEAD
             if (!ShouldAcceptEntry(entry))
                 return;
 
@@ -51,29 +45,12 @@ public sealed class TurnstileLogState : IDisposable
 
             if (_pendingQueueEntries.Add(entry.TimeLogId))
                 _ = MoveEntryToQueueAfterDelayAsync(entry, _disposeCts.Token);
-=======
-            // cancel previous delayed move
-            _spotlightCts?.Cancel();
-            _spotlightCts?.Dispose();
-            _spotlightCts = new CancellationTokenSource();
-
-            if (Spotlight is not null)
-                AddToQueue(Spotlight);
-
-            Spotlight = entry;
-
-            _ = ClearSpotlightAfterDelayAsync(entry, _spotlightCts.Token);
->>>>>>> main
         }
 
         Changed?.Invoke();
     }
 
-<<<<<<< HEAD
     private async Task MoveEntryToQueueAfterDelayAsync(TurnstileLogEntry entry, CancellationToken ct)
-=======
-    private async Task ClearSpotlightAfterDelayAsync(TurnstileLogEntry entry, CancellationToken ct)
->>>>>>> main
     {
         try
         {
@@ -87,7 +64,6 @@ public sealed class TurnstileLogState : IDisposable
 
         lock (_lock)
         {
-<<<<<<< HEAD
             if (!ShouldAcceptEntry(entry))
             {
                 if (Spotlight?.TimeLogId == entry.TimeLogId)
@@ -113,13 +89,6 @@ public sealed class TurnstileLogState : IDisposable
 
             TrimQueue();
             _pendingQueueEntries.Remove(entry.TimeLogId);
-=======
-            if (!ReferenceEquals(Spotlight, entry))
-                return;
-
-            Spotlight = null;
-            AddToQueue(entry);
->>>>>>> main
         }
 
         Changed?.Invoke();
@@ -137,7 +106,7 @@ public sealed class TurnstileLogState : IDisposable
 
     private void TrimQueue()
     {
-        var selectedDeviceSerial = GetSelectedDeviceSerial();
+        var selectedDeviceSerial = _selectedDeviceSerial;
 
         while (CountForSerial(selectedDeviceSerial) > MaxQueueItems)
         {
@@ -195,18 +164,12 @@ public sealed class TurnstileLogState : IDisposable
         return TimeSpan.FromMilliseconds(highlightMs);
     }
 
-<<<<<<< HEAD
     private bool ShouldAcceptEntry(TurnstileLogEntry entry)
     {
         if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
             return true;
 
         return string.Equals(entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
-=======
-    private string GetSelectedDeviceSerial()
-    {
-        var selectedDeviceSerial = _configuration.GetValue<string>("SelectedDeviceSerial");
-        return string.IsNullOrWhiteSpace(selectedDeviceSerial) ? AllDevicesValue : selectedDeviceSerial;
     }
 
     private int CountForSerial(string selectedDeviceSerial)
@@ -216,6 +179,5 @@ public sealed class TurnstileLogState : IDisposable
 
         return _queue.Count(item =>
             string.Equals(item.Entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
->>>>>>> main
     }
 }

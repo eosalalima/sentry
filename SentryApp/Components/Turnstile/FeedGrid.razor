@@ -1,71 +1,14 @@
 @using SentryApp.Services
-@inject IJSRuntime JsRuntime
-@inject TurnstileLogState LogState
 
 <div class="feed-grid">
-<<<<<<< HEAD
-    @{
-        var visibleItems = FilteredItems;
-    }
-
-    @for (var index = visibleItems.Count - 1; index >= 0; index--)
-    {
-        var item = visibleItems[index];
-=======
     @foreach (var item in FilteredItems.Reverse())
     {
->>>>>>> main
         <FeedCard Entry="item.Entry" />
     }
 </div>
 
 @code {
     private const string AllDevicesValue = "1";
-<<<<<<< HEAD
-    private const string SelectedDeviceStorageKey = "SelectedDeviceSerial";
-
-    [Parameter] public IReadOnlyList<TurnstileQueueItem> Items { get; set; } = Array.Empty<TurnstileQueueItem>();
-
-    private string? _selectedDeviceSerial;
-    private bool _hasLoadedSelectedDevice;
-
-    private IReadOnlyList<TurnstileQueueItem> FilteredItems =>
-        string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue
-            ? Items
-            : Items.Where(item => ShouldShowEntry(item.Entry)).ToList();
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!_hasLoadedSelectedDevice)
-        {
-            _hasLoadedSelectedDevice = true;
-            await LoadSelectedDeviceSerialAsync();
-        }
-    }
-
-    private async Task LoadSelectedDeviceSerialAsync()
-    {
-        try
-        {
-            var deviceSerial = await JsRuntime.InvokeAsync<string?>("localStorage.getItem", SelectedDeviceStorageKey);
-            _selectedDeviceSerial = string.IsNullOrWhiteSpace(deviceSerial) ? AllDevicesValue : deviceSerial;
-            LogState.UpdateSelectedDeviceSerial(_selectedDeviceSerial);
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (JSException)
-        {
-            _selectedDeviceSerial = AllDevicesValue;
-            LogState.UpdateSelectedDeviceSerial(_selectedDeviceSerial);
-        }
-    }
-
-    private bool ShouldShowEntry(TurnstileLogEntry entry)
-    {
-        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
-            return true;
-
-        return string.Equals(entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
-=======
 
     [Parameter] public IReadOnlyList<TurnstileQueueItem> Items { get; set; } = Array.Empty<TurnstileQueueItem>();
     [Parameter] public string SelectedDeviceSerial { get; set; } = AllDevicesValue;
@@ -80,6 +23,5 @@
 
         return !string.IsNullOrWhiteSpace(entry.DeviceSerialNumber)
             && entry.DeviceSerialNumber == SelectedDeviceSerial;
->>>>>>> main
     }
 }
