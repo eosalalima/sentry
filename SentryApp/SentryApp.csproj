@@ -7,6 +7,13 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <Target Name="CleanStaticWebAssetsCache" BeforeTargets="DefineStaticWebAssets">
+    <ItemGroup>
+      <StaticWebAssetsCache Include="$(IntermediateOutputPath)staticwebassets.*.json" />
+    </ItemGroup>
+    <Delete Files="@(StaticWebAssetsCache)" ContinueOnError="true" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
