@@ -13,8 +13,7 @@
             <button class="btn" type="button" @onclick="OpenConfig">Config</button>
         </div>
 
-        <EditForm Model="@SmsMessage" OnValidSubmit="SendSms" FormName="sms-message">
-            <AntiforgeryToken />
+        <EditForm Model="@SmsMessage" OnValidSubmit="SendSms">
             <DataAnnotationsValidator />
             <ValidationSummary />
 
@@ -47,8 +46,7 @@
                 <button class="btn ghost" type="button" @onclick="CloseConfig">Close</button>
             </div>
 
-            <EditForm Model="@SettingsModel" OnValidSubmit="SaveSettings" FormName="gsm-settings">
-                <AntiforgeryToken />
+            <EditForm Model="@SettingsModel" OnValidSubmit="SaveSettings">
                 <DataAnnotationsValidator />
                 <ValidationSummary />
 
@@ -126,8 +124,7 @@
                 <h3>Send Test SMS</h3>
                 <p>Verify the GSM device by sending a quick test message.</p>
 
-                <EditForm Model="@TestSmsMessage" OnValidSubmit="SendTestSms" FormName="sms-test">
-                    <AntiforgeryToken />
+                <EditForm Model="@TestSmsMessage" OnValidSubmit="SendTestSms">
                     <DataAnnotationsValidator />
                     <ValidationSummary />
 
@@ -151,13 +148,10 @@
 }
 
 @code {
-    [SupplyParameterFromForm]
     private GsmSettings SettingsModel { get; set; } = new();
 
-    [SupplyParameterFromForm]
     private SmsMessage SmsMessage { get; set; } = new();
 
-    [SupplyParameterFromForm]
     private SmsMessage TestSmsMessage { get; set; } = new()
     {
         TextMessage = "SentrySMS test message."
