@@ -404,7 +404,7 @@
             }
             else
             {
-                await ShowToastAsync(result.Response, "danger");
+                await ShowToastAsync(result.Response + " (Failed to send test message)", "danger");
             }
         }
         catch (Exception ex)
@@ -660,6 +660,7 @@
             port.Open();
             SendCommand(port, "AT");
             SendCommand(port, "AT+CMGF=1");
+            SendCommand(port, "AT+CMEE=1");
 
             port.WriteLine($"AT+CMGS=\"{mobileNumber}\"");
             var prompt = ReadUntilPrompt(port);
