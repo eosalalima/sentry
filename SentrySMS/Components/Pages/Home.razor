@@ -6,86 +6,12 @@
 
 <div class="content-grid">
     <section class="card">
-        <h2>GSM Device Configuration</h2>
-        <p>Configure the serial connection used for AT commands.</p>
-
-        <EditForm Model="@SettingsModel" OnValidSubmit="SaveSettings" FormName="gsm-settings">
-            <AntiforgeryToken />
-            <DataAnnotationsValidator />
-            <ValidationSummary />
-
-            <div class="form-grid">
-                <label>
-                    Serial Port
-                    <InputText class="input" @bind-Value="SettingsModel.SerialPort" placeholder="COM3" />
-                </label>
-
-                <label>
-                    Baud Rate
-                    <InputNumber class="input" @bind-Value="SettingsModel.BaudRate" />
-                </label>
-
-                <label>
-                    Data Bits
-                    <InputNumber class="input" @bind-Value="SettingsModel.DataBits" />
-                </label>
-
-                <label>
-                    Parity
-                    <InputSelect class="input" @bind-Value="SettingsModel.Parity">
-                        @foreach (var value in Enum.GetValues<Parity>())
-                        {
-                            <option value="@value">@value</option>
-                        }
-                    </InputSelect>
-                </label>
-
-                <label>
-                    Stop Bits
-                    <InputSelect class="input" @bind-Value="SettingsModel.StopBits">
-                        @foreach (var value in Enum.GetValues<StopBits>())
-                        {
-                            <option value="@value">@value</option>
-                        }
-                    </InputSelect>
-                </label>
-
-                <label>
-                    Handshake
-                    <InputSelect class="input" @bind-Value="SettingsModel.Handshake">
-                        @foreach (var value in Enum.GetValues<Handshake>())
-                        {
-                            <option value="@value">@value</option>
-                        }
-                    </InputSelect>
-                </label>
-
-                <label>
-                    Read Timeout (ms)
-                    <InputNumber class="input" @bind-Value="SettingsModel.ReadTimeout" />
-                </label>
-
-                <label>
-                    Write Timeout (ms)
-                    <InputNumber class="input" @bind-Value="SettingsModel.WriteTimeout" />
-                </label>
-
-                <label>
-                    New Line Sequence
-                    <InputText class="input" @bind-Value="SettingsModel.NewLine" />
-                </label>
-            </div>
-
-            <div class="button-row">
-                <button class="btn primary" type="submit">Save Settings</button>
-                <button class="btn" type="button" @onclick="DetectDevice">Detect Device</button>
-            </div>
-        </EditForm>
-    </section>
-
-    <section class="card">
         <h2>Send SMS</h2>
         <p>Send a text message using the configured GSM device.</p>
+
+        <div class="button-row align-right">
+            <button class="btn" type="button" @onclick="OpenConfig">Config</button>
+        </div>
 
         <EditForm Model="@SmsMessage" OnValidSubmit="SendSms" FormName="sms-message">
             <AntiforgeryToken />
@@ -109,12 +35,135 @@
     </section>
 </div>
 
+@if (IsConfigOpen)
+{
+    <div class="modal-backdrop" @onclick="CloseConfig">
+        <section class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div>
+                    <h2>GSM Device Configuration</h2>
+                    <p>Update the serial connection and verify the GSM device.</p>
+                </div>
+                <button class="btn ghost" type="button" @onclick="CloseConfig">Close</button>
+            </div>
+
+            <EditForm Model="@SettingsModel" OnValidSubmit="SaveSettings" FormName="gsm-settings">
+                <AntiforgeryToken />
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="form-grid">
+                    <label>
+                        Serial Port
+                        <InputText class="input" @bind-Value="SettingsModel.SerialPort" placeholder="COM3" />
+                    </label>
+
+                    <label>
+                        Baud Rate
+                        <InputNumber class="input" @bind-Value="SettingsModel.BaudRate" />
+                    </label>
+
+                    <label>
+                        Data Bits
+                        <InputNumber class="input" @bind-Value="SettingsModel.DataBits" />
+                    </label>
+
+                    <label>
+                        Parity
+                        <InputSelect class="input" @bind-Value="SettingsModel.Parity">
+                            @foreach (var value in Enum.GetValues<Parity>())
+                            {
+                                <option value="@value">@value</option>
+                            }
+                        </InputSelect>
+                    </label>
+
+                    <label>
+                        Stop Bits
+                        <InputSelect class="input" @bind-Value="SettingsModel.StopBits">
+                            @foreach (var value in Enum.GetValues<StopBits>())
+                            {
+                                <option value="@value">@value</option>
+                            }
+                        </InputSelect>
+                    </label>
+
+                    <label>
+                        Handshake
+                        <InputSelect class="input" @bind-Value="SettingsModel.Handshake">
+                            @foreach (var value in Enum.GetValues<Handshake>())
+                            {
+                                <option value="@value">@value</option>
+                            }
+                        </InputSelect>
+                    </label>
+
+                    <label>
+                        Read Timeout (ms)
+                        <InputNumber class="input" @bind-Value="SettingsModel.ReadTimeout" />
+                    </label>
+
+                    <label>
+                        Write Timeout (ms)
+                        <InputNumber class="input" @bind-Value="SettingsModel.WriteTimeout" />
+                    </label>
+
+                    <label>
+                        New Line Sequence
+                        <InputText class="input" @bind-Value="SettingsModel.NewLine" />
+                    </label>
+                </div>
+
+                <div class="button-row">
+                    <button class="btn primary" type="submit">Save Settings</button>
+                    <button class="btn" type="button" @onclick="DetectDevice">Detect Device</button>
+                </div>
+            </EditForm>
+
+            <div class="divider"></div>
+
+            <div class="modal-section">
+                <h3>Send Test SMS</h3>
+                <p>Verify the GSM device by sending a quick test message.</p>
+
+                <EditForm Model="@TestSmsMessage" OnValidSubmit="SendTestSms" FormName="sms-test">
+                    <AntiforgeryToken />
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <label>
+                        Mobile Number
+                        <InputText class="input" @bind-Value="TestSmsMessage.MobileNumber" placeholder="+15551234567" />
+                    </label>
+
+                    <label>
+                        Test Message
+                        <InputTextArea class="input textarea" @bind-Value="TestSmsMessage.TextMessage" rows="4" />
+                    </label>
+
+                    <div class="button-row">
+                        <button class="btn primary" type="submit">Send Test SMS</button>
+                    </div>
+                </EditForm>
+            </div>
+        </section>
+    </div>
+}
+
 @code {
     [SupplyParameterFromForm]
     private GsmSettings SettingsModel { get; set; } = new();
 
     [SupplyParameterFromForm]
     private SmsMessage SmsMessage { get; set; } = new();
+
+    [SupplyParameterFromForm]
+    private SmsMessage TestSmsMessage { get; set; } = new()
+    {
+        TextMessage = "SentrySMS test message."
+    };
+
+    private bool IsConfigOpen { get; set; }
 
     protected override void OnInitialized()
     {
@@ -133,6 +182,16 @@
                 NewLine = SettingsSnapshot.Value.NewLine
             };
         }
+    }
+
+    private void OpenConfig()
+    {
+        IsConfigOpen = true;
+    }
+
+    private void CloseConfig()
+    {
+        IsConfigOpen = false;
     }
 
     private async Task SaveSettings()
@@ -164,6 +223,19 @@
         else
         {
             ToastService.ShowToast("Message failed", result.Response, ToastLevel.Error);
+        }
+    }
+
+    private async Task SendTestSms()
+    {
+        var result = await GsmService.SendSmsAsync(TestSmsMessage);
+        if (result.Success)
+        {
+            ToastService.ShowToast("Test message sent", "Test SMS successfully delivered to the GSM module.", ToastLevel.Success);
+        }
+        else
+        {
+            ToastService.ShowToast("Test message failed", result.Response, ToastLevel.Error);
         }
     }
 }
