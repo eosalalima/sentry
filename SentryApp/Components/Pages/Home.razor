@@ -83,10 +83,12 @@
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(storedSerial)
             ? AllDevicesValue
             : storedSerial;
+            State.UpdateSelectedDeviceSerial(_selectedDeviceSerial);
         }
         catch (JSException)
         {
             _selectedDeviceSerial = AllDevicesValue;
+            State.UpdateSelectedDeviceSerial(_selectedDeviceSerial);
         }
     }
 }
