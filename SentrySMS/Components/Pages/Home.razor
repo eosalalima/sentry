@@ -181,6 +181,19 @@
 
     private void OpenConfig()
     {
+        SettingsModel = new GsmSettings
+        {
+            SerialPort = SettingsSnapshot.Value.SerialPort,
+            BaudRate = SettingsSnapshot.Value.BaudRate,
+            DataBits = SettingsSnapshot.Value.DataBits,
+            Parity = SettingsSnapshot.Value.Parity,
+            StopBits = SettingsSnapshot.Value.StopBits,
+            Handshake = SettingsSnapshot.Value.Handshake,
+            ReadTimeout = SettingsSnapshot.Value.ReadTimeout,
+            WriteTimeout = SettingsSnapshot.Value.WriteTimeout,
+            NewLine = SettingsSnapshot.Value.NewLine
+        };
+
         IsConfigOpen = true;
     }
 
