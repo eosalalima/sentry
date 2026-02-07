@@ -34,14 +34,18 @@
 
 <div class="mb-3">
     <label class="form-label" for="personnelSelect">Personnel</label>
-    <select id="personnelSelect" class="form-select" @bind="_selectedPersonnelId" disabled="@(_isBusy || _personnelUnion.Count == 0)">
+    <select id="personnelSelect" class="form-select" @bind="_selectedPersonnelId" disabled="@(_isBusy || _isLoadingPersonnel)">
         <option value="">Select personnel...</option>
         @foreach (var personnel in _personnelUnion)
         {
             <option value="@personnel.Field01">@personnel.DisplayName</option>
         }
     </select>
-    @if (_personnelUnion.Count == 0)
+    @if (_isLoadingPersonnel)
+    {
+        <div class="form-text text-muted">Loading personnel records...</div>
+    }
+    else if (_personnelUnion.Count == 0)
     {
         <div class="form-text text-muted">No personnel records were found.</div>
     }
@@ -185,6 +189,7 @@
     private List<DeviceLogListItem> _deviceLogs = new();
     private List<PersonnelOption> _personnelUnion = new();
     private bool _isBusy;
+    private bool _isLoadingPersonnel;
     private bool _isSavingSmsConfig;
     private bool _showSmsConfig;
     private string? _errorMessage;
@@ -312,6 +317,7 @@ ORDER BY Name;")
 
     private async Task LoadPersonnelUnionAsync()
     {
+        _isLoadingPersonnel = true;
         try
         {
             await using var db = await DbFactory.CreateDbContextAsync();
@@ -327,6 +333,11 @@ FROM [STUDENT].[MyDataTable];")
         {
             _personnelUnion = new List<PersonnelOption>();
             _errorMessage = $"Unable to load personnel data: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingPersonnel = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
