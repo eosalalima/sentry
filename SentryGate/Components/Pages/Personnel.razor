@@ -27,7 +27,7 @@
                        list="personnelSearchSuggestions"
                        @bind-Value="_searchTerm"
                        @bind-Value:event="oninput"
-                       @oninput="OnSearchInput" />
+                       @bind-Value:after="OnSearchInput" />
             <datalist id="personnelSearchSuggestions">
                 @foreach (var suggestion in _searchSuggestions)
                 {
@@ -288,9 +288,8 @@ OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;",
         }
     }
 
-    private async Task OnSearchInput(ChangeEventArgs args)
+    private async Task OnSearchInput()
     {
-        _searchTerm = args.Value?.ToString();
         _currentPage = 1;
         await LoadPersonnelAsync();
         await LoadPersonnelSuggestionsAsync();
