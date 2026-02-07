@@ -602,9 +602,9 @@ FROM [STUDENT].[MyDataTable];")
         public string SerialPort { get; set; } = "COM3";
         public int BaudRate { get; set; } = 9600;
         public int DataBits { get; set; } = 8;
-        public string Parity { get; set; } = Parity.None.ToString();
-        public string StopBits { get; set; } = StopBits.One.ToString();
-        public string Handshake { get; set; } = Handshake.None.ToString();
+        public string Parity { get; set; } = System.IO.Ports.Parity.None.ToString();
+        public string StopBits { get; set; } = System.IO.Ports.StopBits.One.ToString();
+        public string Handshake { get; set; } = System.IO.Ports.Handshake.None.ToString();
         public int ReadTimeout { get; set; } = 2000;
         public int WriteTimeout { get; set; } = 2000;
         public string NewLine { get; set; } = "\r\n";
