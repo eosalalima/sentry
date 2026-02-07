@@ -19,170 +19,177 @@
 <div class="mb-3">
     <label class="form-label" for="deviceSelect">Device</label>
     <div class="input-group">
-        <select id="deviceSelect" class="form-select" @bind="_selectedDeviceSerial" disabled="@(_isBusy || _devices.Count == 0)">
+        <select id="deviceSelect" class="form-select" @bind="_selectedDeviceSerial"
+                disabled="@(_isBusy || _devices.Count == 0)">
             <option value="">Select a device...</option>
             @foreach (var device in _devices)
             {
                 <option value="@device.SerialNumber">@device.Name (@device.SerialNumber)</option>
             }
         </select>
-        <button class="btn btn-outline-secondary" type="button" @onclick="OpenSmsConfig" disabled="@_isBusy">SMS Config</button>
-    </div>
-    @if (_devices.Count == 0)
-    {
-        <div class="form-text text-muted">No active devices were found.</div>
-    }
-</div>
-
-<div class="mb-3">
-    <label class="form-label" for="personnelSelect">Personnel</label>
-    <select id="personnelSelect" class="form-select" @bind="_selectedPersonnelId" disabled="@(_isBusy || _isLoadingPersonnel)">
-        <option value="">Select personnel...</option>
-        @foreach (var personnel in _personnelUnion)
+        <button class="btn btn-outline-secondary" type="button" @onclick="OpenSmsConfig" disabled="@_isBusy">SMS
+            Config</button>
+        </div>
+        @if (_devices.Count == 0)
         {
-            <option value="@personnel.Field01">@personnel.DisplayName</option>
+            <div class="form-text text-muted">No active devices were found.</div>
         }
-    </select>
-    @if (_isLoadingPersonnel)
-    {
-        <div class="form-text text-muted">Loading personnel records...</div>
-    }
-    else if (_personnelUnion.Count == 0)
-    {
-        <div class="form-text text-muted">No personnel records were found.</div>
-    }
-</div>
-
-<p>
-    <button class="btn btn-primary" @onclick="AddEntryLogAsync"
-        disabled="@(_isBusy || string.IsNullOrWhiteSpace(_selectedDeviceSerial) || string.IsNullOrWhiteSpace(_selectedPersonnelId))">
-        Add Entry Log
-    </button>
-</p>
-
-@if (!string.IsNullOrWhiteSpace(_errorMessage))
-{
-    <div class="alert alert-warning" role="alert">
-        @_errorMessage
     </div>
-}
 
-@if (!string.IsNullOrWhiteSpace(_statusMessage))
-{
-    <div class="alert alert-success" role="alert">
-        @_statusMessage
+    <div class="mb-3">
+        <label class="form-label" for="personnelSelect">Personnel</label>
+        <select id="personnelSelect" class="form-select" @bind="_selectedPersonnelId"
+                disabled="@(_isBusy || _isLoadingPersonnel)">
+            <option value="">Select personnel...</option>
+            @foreach (var personnel in _personnelUnion)
+            {
+                <option value="@personnel.Field01">@personnel.DisplayName</option>
+            }
+        </select>
+        @if (_isLoadingPersonnel)
+        {
+            <div class="form-text text-muted">Loading personnel records...</div>
+        }
+        else if (_personnelUnion.Count == 0)
+        {
+            <div class="form-text text-muted">No personnel records were found.</div>
+        }
     </div>
-}
 
-@if (_showSmsConfig)
-{
-    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">SMS Device Configuration</h5>
-                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseSmsConfig"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label" for="smsSerialPort">Serial Port Number (COM)</label>
-                            <input class="form-control" id="smsSerialPort" type="text" @bind="_smsSettingsDraft.SerialPort" placeholder="COM3" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="smsBaudRate">Baud rate</label>
-                            <input class="form-control" id="smsBaudRate" type="number" min="1" step="1" @bind-value="_smsSettingsDraft.BaudRate"
-                                @bind-value:event="oninput" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="smsDataBits">Data bits</label>
-                            <input class="form-control" id="smsDataBits" type="number" min="5" step="1" @bind-value="_smsSettingsDraft.DataBits"
-                                @bind-value:event="oninput" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="smsParity">Parity</label>
-                            <select class="form-select" id="smsParity" @bind="_smsSettingsDraft.Parity">
-                                @foreach (var option in _parityOptions)
-                                {
-                                    <option value="@option">@option</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="smsStopBits">StopBits</label>
-                            <select class="form-select" id="smsStopBits" @bind="_smsSettingsDraft.StopBits">
-                                @foreach (var option in _stopBitsOptions)
-                                {
-                                    <option value="@option">@option</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="smsHandshake">Handshake</label>
-                            <select class="form-select" id="smsHandshake" @bind="_smsSettingsDraft.Handshake">
-                                @foreach (var option in _handshakeOptions)
-                                {
-                                    <option value="@option">@option</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="smsReadTimeout">ReadTimeout (ms)</label>
-                            <input class="form-control" id="smsReadTimeout" type="number" min="0" step="1" @bind-value="_smsSettingsDraft.ReadTimeout"
-                                @bind-value:event="oninput" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="smsWriteTimeout">WriteTimeout (ms)</label>
-                            <input class="form-control" id="smsWriteTimeout" type="number" min="0" step="1" @bind-value="_smsSettingsDraft.WriteTimeout"
-                                @bind-value:event="oninput" />
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label" for="smsNewLine">NewLine character</label>
-                            <input class="form-control" id="smsNewLine" type="text" @bind="_smsSettingsDraft.NewLine" placeholder="\r\n" />
-                        </div>
+    <p>
+        <button class="btn btn-primary" @onclick="AddEntryLogAsync"
+                disabled="@(_isBusy || string.IsNullOrWhiteSpace(_selectedDeviceSerial) || string.IsNullOrWhiteSpace(_selectedPersonnelId))">
+            Add Entry Log
+        </button>
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="alert alert-warning" role="alert">
+            @_errorMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_statusMessage))
+    {
+        <div class="alert alert-success" role="alert">
+            @_statusMessage
+        </div>
+    }
+
+    @if (_showSmsConfig)
+    {
+        <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">SMS Device Configuration</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CloseSmsConfig"></button>
                     </div>
-                    @if (!string.IsNullOrWhiteSpace(_smsConfigError))
-                    {
-                        <div class="alert alert-warning mt-3" role="alert">@_smsConfigError</div>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(_smsConfigStatus))
-                    {
-                        <div class="alert alert-success mt-3" role="alert">@_smsConfigStatus</div>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary" type="button" @onclick="SaveSmsConfigAsync" disabled="@_isSavingSmsConfig">Save</button>
-                    <button class="btn btn-secondary" type="button" @onclick="CloseSmsConfig" disabled="@_isSavingSmsConfig">Close</button>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="smsSerialPort">Serial Port Number (COM)</label>
+                                <input class="form-control" id="smsSerialPort" type="text" @bind="_smsSettingsDraft.SerialPort"
+                                       placeholder="COM3" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="smsBaudRate">Baud rate</label>
+                                <input class="form-control" id="smsBaudRate" type="number" min="1" step="1"
+                                       @bind-value="_smsSettingsDraft.BaudRate"                                @bind-value:event="oninput" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="smsDataBits">Data bits</label>
+                                <input class="form-control" id="smsDataBits" type="number" min="5" step="1"
+                                       @bind-value="_smsSettingsDraft.DataBits"                                @bind-value:event="oninput" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="smsParity">Parity</label>
+                                <select class="form-select" id="smsParity" @bind="_smsSettingsDraft.Parity">
+                                    @foreach (var option in _parityOptions)
+                                    {
+                                        <option value="@option">@option</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="smsStopBits">StopBits</label>
+                                <select class="form-select" id="smsStopBits" @bind="_smsSettingsDraft.StopBits">
+                                    @foreach (var option in _stopBitsOptions)
+                                    {
+                                        <option value="@option">@option</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="smsHandshake">Handshake</label>
+                                <select class="form-select" id="smsHandshake" @bind="_smsSettingsDraft.Handshake">
+                                    @foreach (var option in _handshakeOptions)
+                                    {
+                                        <option value="@option">@option</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="smsReadTimeout">ReadTimeout (ms)</label>
+                                <input class="form-control" id="smsReadTimeout" type="number" min="0" step="1"
+                                       @bind-value="_smsSettingsDraft.ReadTimeout"                                @bind-value:event="oninput" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="smsWriteTimeout">WriteTimeout (ms)</label>
+                                <input class="form-control" id="smsWriteTimeout" type="number" min="0" step="1"
+                                       @bind-value="_smsSettingsDraft.WriteTimeout"                                @bind-value:event="oninput" />
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label" for="smsNewLine">NewLine character</label>
+                                <input class="form-control" id="smsNewLine" type="text" @bind="_smsSettingsDraft.NewLine"
+                                       placeholder="\r\n" />
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(_smsConfigError))
+                        {
+                            <div class="alert alert-warning mt-3" role="alert">@_smsConfigError</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_smsConfigStatus))
+                        {
+                            <div class="alert alert-success mt-3" role="alert">@_smsConfigStatus</div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" type="button" @onclick="SaveSmsConfigAsync"
+                                disabled="@_isSavingSmsConfig">Save</button>
+                        <button class="btn btn-secondary" type="button" @onclick="CloseSmsConfig"
+                                disabled="@_isSavingSmsConfig">Close</button>
+                    </div>
                 </div>
             </div>
         </div>
+        <div class="modal-backdrop fade show" @onclick="CloseSmsConfig"></div>
+    }
+
+    <div class="mt-3">
+        <h2 class="h5">Latest Device Logs</h2>
+
+        @if (_deviceLogs.Count == 0)
+        {
+            <p class="text-muted">No device logs found.</p>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var log in _deviceLogs)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                        <div class="ms-2 me-auto">
+                            <div class="fw-semibold">@log.AccessNumber (@log.LogType)</div>
+                            <div class="text-muted">Device: @log.DeviceSerialNumber</div>
+                        </div>
+                        <span class="badge text-bg-secondary rounded-pill">@log.TimeLogStamp.LocalDateTime.ToString("g")</span>
+                    </li>
+                }
+            </ul>
+        }
     </div>
-    <div class="modal-backdrop fade show" @onclick="CloseSmsConfig"></div>
-}
-
-<div class="mt-3">
-    <h2 class="h5">Latest Device Logs</h2>
-
-    @if (_deviceLogs.Count == 0)
-    {
-        <p class="text-muted">No device logs found.</p>
-    }
-    else
-    {
-        <ul class="list-group">
-            @foreach (var log in _deviceLogs)
-            {
-                <li class="list-group-item d-flex justify-content-between align-items-start">
-                    <div class="ms-2 me-auto">
-                        <div class="fw-semibold">@log.AccessNumber (@log.LogType)</div>
-                        <div class="text-muted">Device: @log.DeviceSerialNumber</div>
-                    </div>
-                    <span class="badge text-bg-secondary rounded-pill">@log.TimeLogStamp.LocalDateTime.ToString("g")</span>
-                </li>
-            }
-        </ul>
-    }
-</div>
 
 @code {
     private static readonly string[] LogTypes = ["IN", "OUT", "BREAK OUT"];
@@ -359,7 +366,8 @@ FROM [dbo].[MyDataTable];")
         }
     }
 
-    private async Task SendEntrySmsAsync(PersonnelOption personnel, string? deviceSerial, string logType, Guid logId, DateTimeOffset timestamp)
+    private async Task SendEntrySmsAsync(PersonnelOption personnel, string? deviceSerial, string logType, Guid logId,
+DateTimeOffset timestamp)
     {
         var mobileNumber = personnel.Field13;
         if (string.IsNullOrWhiteSpace(mobileNumber))
@@ -375,8 +383,9 @@ FROM [dbo].[MyDataTable];")
             return;
         }
 
-        var deviceName = _devices.FirstOrDefault(device => device.SerialNumber == deviceSerial)?.Name ?? deviceSerial ?? "Unknown Device";
-        var message = $"Entry confirmed: {logType} at {deviceName} on {timestamp:yyyy-MM-dd} {timestamp:HH:mm:ss}. Ref: {logId}. Mobile: {mobileNumber}";
+        var deviceName = _devices.FirstOrDefault(device => device.SerialNumber == deviceSerial)?.Name ?? deviceSerial ??
+"Unknown Device";
+        var message = $"Entry confirmed: {logType} at {deviceName} on {timestamp:yyyy-MM-dd} {timestamp:HH:mm:ss}. Ref: {logId}. Sent to: {mobileNumber}";
 
         var result = await Task.Run(() => SendSms(portName, mobileNumber, message, _smsSettings));
         if (!result.Success)
