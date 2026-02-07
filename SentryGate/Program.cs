@@ -10,6 +10,10 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddDbContextFactory<AccessControlDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("AccessControlDb")));
+builder.Services.AddDbContextFactory<StaffDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("StaffDb")));
+builder.Services.AddDbContextFactory<StudentDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("StudentDb")));
 
 var app = builder.Build();
 

@@ -9,6 +9,8 @@
 @using System.Text.Json.Nodes
 @using System.Threading
 @inject IDbContextFactory<AccessControlDbContext> DbFactory
+@inject IDbContextFactory<StaffDbContext> StaffDbFactory
+@inject IDbContextFactory<StudentDbContext> StudentDbFactory
 @inject IConfiguration Configuration
 @inject IWebHostEnvironment HostEnvironment
 
@@ -320,14 +322,24 @@ ORDER BY Name;")
         _isLoadingPersonnel = true;
         try
         {
-            await using var db = await DbFactory.CreateDbContextAsync();
-            _personnelUnion = await db.Database.SqlQueryRaw<PersonnelOption>(@"
+            await using var staffDb = await StaffDbFactory.CreateDbContextAsync();
+            await using var studentDb = await StudentDbFactory.CreateDbContextAsync();
+
+            var staffPersonnelTask = staffDb.Database.SqlQueryRaw<PersonnelOption>(@"
 SELECT Field01, Field02, Field03, Field04, Field13
-FROM [STAFF].[MyDataTable]
-UNION
+FROM [STAFF].[MyDataTable];")
+                .ToListAsync();
+
+            var studentPersonnelTask = studentDb.Database.SqlQueryRaw<PersonnelOption>(@"
 SELECT Field01, Field02, Field03, Field04, Field13
 FROM [STUDENT].[MyDataTable];")
                 .ToListAsync();
+
+            await Task.WhenAll(staffPersonnelTask, studentPersonnelTask);
+
+            var staffPersonnel = await staffPersonnelTask;
+            var studentPersonnel = await studentPersonnelTask;
+            _personnelUnion = staffPersonnel.Concat(studentPersonnel).ToList();
         }
         catch (Exception ex)
         {
