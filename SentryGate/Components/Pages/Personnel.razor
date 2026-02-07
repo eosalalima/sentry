@@ -226,7 +226,7 @@ else
 
             _personnel.Clear();
             var results = await db.Database.SqlQueryRaw<PersonnelRecord>(@"
-SELECT Field01, Field02, Field03, Field04, Field05, Field06, Field07, Field08,
+SELECT Field01, Field02, Field03, Field04, TRY_CONVERT(datetime, Field05) AS Field05, Field06, Field07, Field08,
        Field09, Field10, Field11, Field12, Field13, Field14, Field15, Field16
 FROM [dbo].[MyDataTable]
 ORDER BY Field02, Field03, Field01
