@@ -28,7 +28,7 @@
                        list="personnelSearchSuggestions"
                        @bind-Value="_searchTerm"
                        @bind-Value:event="oninput"
-                       @oninput="OnSearchInput" />
+                       @bind-Value:after="OnSearchInput" />
             <datalist id="personnelSearchSuggestions">
                 @foreach (var suggestion in _searchSuggestions)
                 {
