@@ -2,27 +2,54 @@
 @rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @using SentryGate.Data
+@using System.IO.Ports
+@using System.Linq
+@using System.Text
+@using System.Text.Json
+@using System.Text.Json.Nodes
+@using System.Threading
 @inject IDbContextFactory<AccessControlDbContext> DbFactory
+@inject IConfiguration Configuration
+@inject IWebHostEnvironment HostEnvironment
 
 <h1>Sentry Test</h1>
 
 <div class="mb-3">
     <label class="form-label" for="deviceSelect">Device</label>
-    <select id="deviceSelect" class="form-select" @bind="_selectedDeviceSerial" disabled="@(_isBusy || _devices.Count == 0)">
-        <option value="">Select a device...</option>
-        @foreach (var device in _devices)
-        {
-            <option value="@device.SerialNumber">@device.Name (@device.SerialNumber)</option>
-        }
-    </select>
+    <div class="input-group">
+        <select id="deviceSelect" class="form-select" @bind="_selectedDeviceSerial" disabled="@(_isBusy || _devices.Count == 0)">
+            <option value="">Select a device...</option>
+            @foreach (var device in _devices)
+            {
+                <option value="@device.SerialNumber">@device.Name (@device.SerialNumber)</option>
+            }
+        </select>
+        <button class="btn btn-outline-secondary" type="button" @onclick="OpenSmsConfig" disabled="@_isBusy">SMS Config</button>
+    </div>
     @if (_devices.Count == 0)
     {
         <div class="form-text text-muted">No active devices were found.</div>
     }
 </div>
 
+<div class="mb-3">
+    <label class="form-label" for="personnelSelect">Personnel</label>
+    <select id="personnelSelect" class="form-select" @bind="_selectedPersonnelId" disabled="@(_isBusy || _personnelUnion.Count == 0)">
+        <option value="">Select personnel...</option>
+        @foreach (var personnel in _personnelUnion)
+        {
+            <option value="@personnel.Field01">@personnel.DisplayName</option>
+        }
+    </select>
+    @if (_personnelUnion.Count == 0)
+    {
+        <div class="form-text text-muted">No personnel records were found.</div>
+    }
+</div>
+
 <p>
-    <button class="btn btn-primary" @onclick="AddEntryLogAsync" disabled="@(_isBusy || string.IsNullOrWhiteSpace(_selectedDeviceSerial))">
+    <button class="btn btn-primary" @onclick="AddEntryLogAsync"
+        disabled="@(_isBusy || string.IsNullOrWhiteSpace(_selectedDeviceSerial) || string.IsNullOrWhiteSpace(_selectedPersonnelId))">
         Add Entry Log
     </button>
 </p>
@@ -39,6 +66,92 @@
     <div class="alert alert-success" role="alert">
         @_statusMessage
     </div>
+}
+
+@if (_showSmsConfig)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">SMS Device Configuration</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseSmsConfig"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsSerialPort">Serial Port Number (COM)</label>
+                            <input class="form-control" id="smsSerialPort" type="text" @bind="_smsSettingsDraft.SerialPort" placeholder="COM3" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsBaudRate">Baud rate</label>
+                            <input class="form-control" id="smsBaudRate" type="number" min="1" step="1" @bind-value="_smsSettingsDraft.BaudRate"
+                                @bind-value:event="oninput" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsDataBits">Data bits</label>
+                            <input class="form-control" id="smsDataBits" type="number" min="5" step="1" @bind-value="_smsSettingsDraft.DataBits"
+                                @bind-value:event="oninput" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsParity">Parity</label>
+                            <select class="form-select" id="smsParity" @bind="_smsSettingsDraft.Parity">
+                                @foreach (var option in _parityOptions)
+                                {
+                                    <option value="@option">@option</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsStopBits">StopBits</label>
+                            <select class="form-select" id="smsStopBits" @bind="_smsSettingsDraft.StopBits">
+                                @foreach (var option in _stopBitsOptions)
+                                {
+                                    <option value="@option">@option</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsHandshake">Handshake</label>
+                            <select class="form-select" id="smsHandshake" @bind="_smsSettingsDraft.Handshake">
+                                @foreach (var option in _handshakeOptions)
+                                {
+                                    <option value="@option">@option</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsReadTimeout">ReadTimeout (ms)</label>
+                            <input class="form-control" id="smsReadTimeout" type="number" min="0" step="1" @bind-value="_smsSettingsDraft.ReadTimeout"
+                                @bind-value:event="oninput" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsWriteTimeout">WriteTimeout (ms)</label>
+                            <input class="form-control" id="smsWriteTimeout" type="number" min="0" step="1" @bind-value="_smsSettingsDraft.WriteTimeout"
+                                @bind-value:event="oninput" />
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label" for="smsNewLine">NewLine character</label>
+                            <input class="form-control" id="smsNewLine" type="text" @bind="_smsSettingsDraft.NewLine" placeholder="\r\n" />
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(_smsConfigError))
+                    {
+                        <div class="alert alert-warning mt-3" role="alert">@_smsConfigError</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_smsConfigStatus))
+                    {
+                        <div class="alert alert-success mt-3" role="alert">@_smsConfigStatus</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" type="button" @onclick="SaveSmsConfigAsync" disabled="@_isSavingSmsConfig">Save</button>
+                    <button class="btn btn-secondary" type="button" @onclick="CloseSmsConfig" disabled="@_isSavingSmsConfig">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show" @onclick="CloseSmsConfig"></div>
 }
 
 <div class="mt-3">
@@ -70,14 +183,27 @@
     private readonly Random _random = new();
     private List<DeviceOption> _devices = new();
     private List<DeviceLogListItem> _deviceLogs = new();
+    private List<PersonnelOption> _personnelUnion = new();
     private bool _isBusy;
+    private bool _isSavingSmsConfig;
+    private bool _showSmsConfig;
     private string? _errorMessage;
+    private string? _selectedPersonnelId;
     private string? _selectedDeviceSerial;
+    private string? _smsConfigError;
+    private string? _smsConfigStatus;
     private string? _statusMessage;
+    private SmsDeviceSettings _smsSettings = new();
+    private SmsDeviceSettings _smsSettingsDraft = new();
+    private readonly IReadOnlyList<string> _parityOptions = Enum.GetNames(typeof(Parity));
+    private readonly IReadOnlyList<string> _stopBitsOptions = Enum.GetNames(typeof(StopBits));
+    private readonly IReadOnlyList<string> _handshakeOptions = Enum.GetNames(typeof(Handshake));
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadSmsSettingsAsync();
         await LoadDevicesAsync();
+        await LoadPersonnelUnionAsync();
         await LoadRecentLogsAsync();
     }
 
@@ -91,12 +217,12 @@
         {
             await using var db = await DbFactory.CreateDbContextAsync();
 
-            var accessNumber = await PickRandomValueAsync(db, "SELECT TOP 1 AccessNumber AS Value FROM Personnels WHERE IsDeleted = 0 ORDER BY NEWID()");
+            var selectedPersonnel = _personnelUnion.FirstOrDefault(person => person.Field01 == _selectedPersonnelId);
             var deviceSerial = _selectedDeviceSerial;
 
-            if (string.IsNullOrWhiteSpace(accessNumber))
+            if (selectedPersonnel is null)
             {
-                _errorMessage = "Unable to add log entry because required data was unavailable. Ensure Personnels have active records.";
+                _errorMessage = "Please select personnel before adding a log entry.";
                 return;
             }
 
@@ -109,15 +235,24 @@
             var now = DateTimeOffset.Now;
             var recordDate = DateTime.Now.Date;
             var logType = LogTypes[_random.Next(LogTypes.Length)];
+            var logId = Guid.NewGuid();
+            var accessNumber = selectedPersonnel.Field01;
+            if (string.IsNullOrWhiteSpace(accessNumber))
+            {
+                _errorMessage = "Unable to add log entry because the selected personnel does not have a valid access number.";
+                return;
+            }
 
             await db.Database.ExecuteSqlInterpolatedAsync($@"
 INSERT INTO DeviceLogs
 (Id, DateCreated, IsDeleted, RecordDate, TimeLogStamp, AccessNumber, DeviceSerialNumber, CardNo, SiteCode, LinkId, Event, EventAddress, LogType, VerifyMode, [Index], HasMask, Temperature, IsNotified)
 VALUES
-({Guid.NewGuid()}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, {(string?)null}, {(int?)null}, {"20"}, {"1"}, {logType}, {"200"}, 0, {(bool?)null}, {(float?)null}, {(bool?)null});");
+({logId}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, {(string?)null}, {(int?)null}, {"20"}, {"1"}, {logType}, {"200"}, 0, {(bool?)null}, {(float?)null}, {(bool?)null});");
 
             await LoadRecentLogsAsync(db);
             _statusMessage = $"Added a {logType} entry for access {accessNumber} on device {deviceSerial}.";
+
+            await SendEntrySmsAsync(selectedPersonnel, deviceSerial, logType, logId, now);
         }
         catch (Exception ex)
         {
@@ -175,9 +310,249 @@ ORDER BY Name;")
         }
     }
 
-    private static async Task<string?> PickRandomValueAsync(AccessControlDbContext db, string sql)
+    private async Task LoadPersonnelUnionAsync()
     {
-        return await db.Database.SqlQueryRaw<string>(sql).FirstOrDefaultAsync();
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            _personnelUnion = await db.Database.SqlQueryRaw<PersonnelOption>(@"
+SELECT Field01, Field02, Field03, Field04, Field13
+FROM [STAFF].[MyDataTable]
+UNION
+SELECT Field01, Field02, Field03, Field04, Field13
+FROM [STUDENT].[MyDataTable];")
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _personnelUnion = new List<PersonnelOption>();
+            _errorMessage = $"Unable to load personnel data: {ex.Message}";
+        }
+    }
+
+    private async Task SendEntrySmsAsync(PersonnelOption personnel, string? deviceSerial, string logType, Guid logId, DateTimeOffset timestamp)
+    {
+        var mobileNumber = personnel.Field13;
+        if (string.IsNullOrWhiteSpace(mobileNumber))
+        {
+            _errorMessage = "SMS was not sent because the selected personnel does not have a mobile number on file.";
+            return;
+        }
+
+        var portName = BuildPortName(_smsSettings.SerialPort);
+        if (string.IsNullOrWhiteSpace(portName))
+        {
+            _errorMessage = "SMS was not sent because the SMS device serial port is not configured.";
+            return;
+        }
+
+        var deviceName = _devices.FirstOrDefault(device => device.SerialNumber == deviceSerial)?.Name ?? deviceSerial ?? "Unknown Device";
+        var message = $"Entry confirmed: {logType} at {deviceName} on {timestamp:yyyy-MM-dd} {timestamp:HH:mm:ss}. Ref: {logId}";
+
+        var result = await Task.Run(() => SendSms(portName, mobileNumber, message, _smsSettings));
+        if (!result.Success)
+        {
+            _errorMessage = result.Response;
+        }
+    }
+
+    private void OpenSmsConfig()
+    {
+        _smsConfigError = null;
+        _smsConfigStatus = null;
+        _smsSettingsDraft = _smsSettings.Clone();
+        _showSmsConfig = true;
+    }
+
+    private void CloseSmsConfig()
+    {
+        _showSmsConfig = false;
+    }
+
+    private async Task SaveSmsConfigAsync()
+    {
+        if (_isSavingSmsConfig)
+        {
+            return;
+        }
+
+        _isSavingSmsConfig = true;
+        _smsConfigError = null;
+        _smsConfigStatus = null;
+
+        try
+        {
+            _smsSettings = _smsSettingsDraft.Clone();
+            var appSettingsPath = Path.Combine(HostEnvironment.ContentRootPath, "appsettings.json");
+            var json = await File.ReadAllTextAsync(appSettingsPath);
+            var root = JsonNode.Parse(json) as JsonObject ?? new JsonObject();
+            root["SmsDevice"] = JsonSerializer.SerializeToNode(_smsSettings, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+            await File.WriteAllTextAsync(appSettingsPath, root.ToJsonString(new JsonSerializerOptions
+            {
+                WriteIndented = true
+            }));
+
+            _smsConfigStatus = "SMS device configuration saved.";
+        }
+        catch (Exception ex)
+        {
+            _smsConfigError = $"Unable to save SMS configuration: {ex.Message}";
+        }
+        finally
+        {
+            _isSavingSmsConfig = false;
+        }
+    }
+
+    private async Task LoadSmsSettingsAsync()
+    {
+        _smsSettings = Configuration.GetSection("SmsDevice").Get<SmsDeviceSettings>() ?? new SmsDeviceSettings();
+        _smsSettingsDraft = _smsSettings.Clone();
+        await Task.CompletedTask;
+    }
+
+    private static string BuildPortName(string? portInput)
+    {
+        var port = portInput?.Trim();
+        if (string.IsNullOrWhiteSpace(port))
+        {
+            return string.Empty;
+        }
+
+        return port.StartsWith("COM", StringComparison.OrdinalIgnoreCase) ? port : $"COM{port}";
+    }
+
+    private static SmsSendResult SendSms(string portName, string mobileNumber, string message, SmsDeviceSettings settings)
+    {
+        if (!TryParseEnum(settings.Parity, Parity.None, out var parity))
+        {
+            parity = Parity.None;
+        }
+
+        if (!TryParseEnum(settings.StopBits, StopBits.One, out var stopBits))
+        {
+            stopBits = StopBits.One;
+        }
+
+        if (!TryParseEnum(settings.Handshake, Handshake.None, out var handshake))
+        {
+            handshake = Handshake.None;
+        }
+
+        using var port = new SerialPort(portName, settings.BaudRate, parity, settings.DataBits, stopBits)
+        {
+            Handshake = handshake,
+            ReadTimeout = settings.ReadTimeout,
+            WriteTimeout = settings.WriteTimeout,
+            NewLine = string.IsNullOrWhiteSpace(settings.NewLine) ? "\r\n" : settings.NewLine
+        };
+
+        try
+        {
+            port.Open();
+            SendCommand(port, "AT");
+            SendCommand(port, "AT+CMGF=1");
+            SendCommand(port, "AT+CMEE=1");
+
+            port.WriteLine($"AT+CMGS=\"{mobileNumber}\"");
+            var prompt = ReadUntilPrompt(port);
+            if (prompt.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+            {
+                return new SmsSendResult(false, prompt);
+            }
+
+            port.Write(message + char.ConvertFromUtf32(26));
+            var response = ReadResponse(port);
+            var success = response.Contains("OK", StringComparison.OrdinalIgnoreCase);
+            return new SmsSendResult(success, response);
+        }
+        catch (Exception ex)
+        {
+            return new SmsSendResult(false, $"SMS send failed: {ex.Message}");
+        }
+    }
+
+    private static bool TryParseEnum<T>(string? value, T fallback, out T result) where T : struct
+    {
+        if (!string.IsNullOrWhiteSpace(value) && Enum.TryParse(value, true, out result))
+        {
+            return true;
+        }
+
+        result = fallback;
+        return false;
+    }
+
+    private static string SendCommand(SerialPort port, string command)
+    {
+        port.WriteLine(command);
+        return ReadResponse(port);
+    }
+
+    private static string ReadResponse(SerialPort port)
+    {
+        var buffer = new StringBuilder();
+        var stopAt = DateTime.UtcNow.AddMilliseconds(port.ReadTimeout);
+
+        while (DateTime.UtcNow < stopAt)
+        {
+            try
+            {
+                var chunk = port.ReadExisting();
+                if (!string.IsNullOrEmpty(chunk))
+                {
+                    buffer.Append(chunk);
+                    if (buffer.ToString().Contains("OK", StringComparison.OrdinalIgnoreCase) ||
+                        buffer.ToString().Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (TimeoutException)
+            {
+                break;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        return buffer.Length == 0 ? "No response received." : buffer.ToString();
+    }
+
+    private static string ReadUntilPrompt(SerialPort port)
+    {
+        var buffer = new StringBuilder();
+        var stopAt = DateTime.UtcNow.AddMilliseconds(port.ReadTimeout);
+
+        while (DateTime.UtcNow < stopAt)
+        {
+            try
+            {
+                var chunk = port.ReadExisting();
+                if (!string.IsNullOrEmpty(chunk))
+                {
+                    buffer.Append(chunk);
+                    var current = buffer.ToString();
+                    if (current.Contains(">", StringComparison.OrdinalIgnoreCase) ||
+                        current.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (TimeoutException)
+            {
+                break;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        return buffer.Length == 0 ? "No response received." : buffer.ToString();
     }
 
     private sealed class DeviceOption
@@ -185,6 +560,73 @@ ORDER BY Name;")
         public string? SerialNumber { get; set; }
         public string? Name { get; set; }
     }
+
+    private sealed class PersonnelOption
+    {
+        public string? Field01 { get; set; }
+        public string? Field02 { get; set; }
+        public string? Field03 { get; set; }
+        public string? Field04 { get; set; }
+        public string? Field13 { get; set; }
+
+        public string DisplayName
+        {
+            get
+            {
+                var lastName = Field02?.Trim();
+                var firstName = Field03?.Trim();
+                var middleInitial = Field04?.Trim();
+                var segments = new List<string>();
+                if (!string.IsNullOrWhiteSpace(lastName))
+                {
+                    segments.Add(lastName);
+                }
+                if (!string.IsNullOrWhiteSpace(firstName))
+                {
+                    segments.Add(firstName);
+                }
+                if (!string.IsNullOrWhiteSpace(middleInitial))
+                {
+                    segments.Add(middleInitial);
+                }
+
+                return segments.Count == 0
+                    ? "Unknown"
+                    : string.Join(", ", segments.Take(2)) + (segments.Count > 2 ? $" {segments[2]}" : string.Empty);
+            }
+        }
+    }
+
+    private sealed class SmsDeviceSettings
+    {
+        public string SerialPort { get; set; } = "COM3";
+        public int BaudRate { get; set; } = 9600;
+        public int DataBits { get; set; } = 8;
+        public string Parity { get; set; } = Parity.None.ToString();
+        public string StopBits { get; set; } = StopBits.One.ToString();
+        public string Handshake { get; set; } = Handshake.None.ToString();
+        public int ReadTimeout { get; set; } = 2000;
+        public int WriteTimeout { get; set; } = 2000;
+        public string NewLine { get; set; } = "\r\n";
+
+        public SmsDeviceSettings Clone()
+        {
+            return new SmsDeviceSettings
+            {
+                SerialPort = SerialPort,
+                BaudRate = BaudRate,
+                DataBits = DataBits,
+                Parity = Parity,
+                StopBits = StopBits,
+                Handshake = Handshake,
+                ReadTimeout = ReadTimeout,
+                WriteTimeout = WriteTimeout,
+                NewLine = NewLine
+            };
+        }
+    }
+
+    private sealed record SmsSendResult(bool Success, string Response);
 
     private sealed class DeviceLogListItem
     {
