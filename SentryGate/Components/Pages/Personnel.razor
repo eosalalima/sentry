@@ -502,10 +502,7 @@ WHERE Field15 = {record.Field15};");
     private static string BuildSaveErrorMessage(Exception ex)
     {
         var message = GetFullExceptionMessage(ex);
-        if (message.Contains("comsasia", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("fileloadexception", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("assembly id", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("assembly", StringComparison.OrdinalIgnoreCase))
+        if (message.Contains("comsasia", StringComparison.OrdinalIgnoreCase))
         {
             return "Unable to save personnel because the database server could not load the CLR assembly "
                 + "'comsasia'. Verify the assembly is installed and trusted on the SQL Server (or remove/disable "
