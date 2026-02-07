@@ -327,12 +327,12 @@ ORDER BY Name;")
 
             var staffPersonnelTask = staffDb.Database.SqlQueryRaw<PersonnelOption>(@"
 SELECT Field01, Field02, Field03, Field04, Field13
-FROM [STAFF].[MyDataTable];")
+FROM [dbo].[MyDataTable];")
                 .ToListAsync();
 
             var studentPersonnelTask = studentDb.Database.SqlQueryRaw<PersonnelOption>(@"
 SELECT Field01, Field02, Field03, Field04, Field13
-FROM [STUDENT].[MyDataTable];")
+FROM [dbo].[MyDataTable];")
                 .ToListAsync();
 
             await Task.WhenAll(staffPersonnelTask, studentPersonnelTask);
