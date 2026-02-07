@@ -218,7 +218,7 @@ else
         try
         {
             await using var db = await StaffDbFactory.CreateDbContextAsync();
-            _totalCount = await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) FROM [dbo].[MyDataTable]")
+            _totalCount = await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM [dbo].[MyDataTable]")
                 .SingleAsync();
 
             _currentPage = Math.Min(_currentPage, TotalPages);
