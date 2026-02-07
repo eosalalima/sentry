@@ -4,6 +4,7 @@
 @using Microsoft.Data.SqlClient
 @using Microsoft.EntityFrameworkCore
 @using SentryGate.Data
+@using System.Data
 @inject IDbContextFactory<StaffDbContext> StaffDbFactory
 
 <h1>Personnel</h1>
@@ -388,6 +389,13 @@ ORDER BY Field02, Field01",
         try
         {
             await using var db = await StaffDbFactory.CreateDbContextAsync();
+            if (!await IsComsasiaAssemblyAvailableAsync(db))
+            {
+                _errorMessage = "Unable to save personnel because the database server could not load the CLR assembly "
+                    + "'comsasia'. Verify the assembly is installed and trusted on the SQL Server (or remove/disable "
+                    + "any database trigger or function that depends on it), then try again.";
+                return;
+            }
 
             if (_isNewRecord)
             {
@@ -540,6 +548,32 @@ WHERE Field15 = {record.Field15};");
             .ToList();
 
         return distinctMessages.Count == 0 ? "Unknown error." : string.Join(" ", distinctMessages);
+    }
+
+    private static async Task<bool> IsComsasiaAssemblyAvailableAsync(StaffDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+
+        if (shouldClose)
+        {
+            await connection.OpenAsync();
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM sys.assemblies WHERE name = 'comsasia') THEN 1 ELSE 0 END AS bit);";
+            var result = await command.ExecuteScalarAsync();
+            return result is bool available && available;
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 
     private sealed class PersonnelRecord
