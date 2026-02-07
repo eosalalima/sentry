@@ -339,7 +339,13 @@ FROM [dbo].[MyDataTable];")
 
             var staffPersonnel = await staffPersonnelTask;
             var studentPersonnel = await studentPersonnelTask;
-            _personnelUnion = staffPersonnel.Concat(studentPersonnel).ToList();
+            _personnelUnion = staffPersonnel
+                .Concat(studentPersonnel)
+                .OrderBy(person => person.Field02 ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(person => person.Field03 ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(person => person.Field04 ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(person => person.Field01 ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
         catch (Exception ex)
         {
