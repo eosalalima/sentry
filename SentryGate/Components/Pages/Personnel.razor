@@ -260,23 +260,32 @@ WHERE (@term = '' OR Field01 LIKE @like OR Field02 LIKE @like OR Field15 LIKE @l
 
             _currentPage = Math.Min(_currentPage, TotalPages);
             var offset = (_currentPage - 1) * _pageSize;
+            var startRow = offset + 1;
+            var endRow = offset + _pageSize;
 
             _personnel.Clear();
             var termParameter = new SqlParameter("@term", _searchTerm ?? string.Empty);
             var likeParameter = new SqlParameter("@like", $"%{_searchTerm}%");
             var results = await db.Database.SqlQueryRaw<PersonnelRecord>(@"
-SELECT Field01, Field02, Field03, Field04,
-       CASE WHEN ISDATE(Field05) = 1 THEN CONVERT(datetime, Field05) END AS Field05,
+WITH OrderedPersonnel AS (
+    SELECT Field01, Field02, Field03, Field04,
+           CASE WHEN ISDATE(Field05) = 1 THEN CONVERT(datetime, Field05) END AS Field05,
+           Field06, Field07, Field08,
+           Field09, Field10, Field11, Field12, Field13, Field14, Field15, Field16,
+           ROW_NUMBER() OVER (ORDER BY Field02, Field03, Field01) AS RowNum
+    FROM [dbo].[MyDataTable]
+    WHERE (@term = '' OR Field01 LIKE @like OR Field02 LIKE @like OR Field15 LIKE @like)
+)
+SELECT Field01, Field02, Field03, Field04, Field05,
        Field06, Field07, Field08,
        Field09, Field10, Field11, Field12, Field13, Field14, Field15, Field16
-FROM [dbo].[MyDataTable]
-WHERE (@term = '' OR Field01 LIKE @like OR Field02 LIKE @like OR Field15 LIKE @like)
-ORDER BY Field02, Field03, Field01
-OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;",
+FROM OrderedPersonnel
+WHERE RowNum BETWEEN @startRow AND @endRow
+ORDER BY RowNum",
                     termParameter,
                     likeParameter,
-                    new SqlParameter("@offset", offset),
-                    new SqlParameter("@pageSize", _pageSize))
+                    new SqlParameter("@startRow", startRow),
+                    new SqlParameter("@endRow", endRow))
                 .ToListAsync();
 
             _personnel.AddRange(results);
