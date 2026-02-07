@@ -389,11 +389,10 @@ ORDER BY Field02, Field01",
         try
         {
             await using var db = await StaffDbFactory.CreateDbContextAsync();
-            if (!await IsComsasiaAssemblyAvailableAsync(db))
+            var comsasiaStatus = await GetComsasiaStatusAsync(db);
+            if (!comsasiaStatus.ClrEnabled || !comsasiaStatus.AssemblyExists)
             {
-                _errorMessage = "Unable to save personnel because the database server could not load the CLR assembly "
-                    + "'comsasia'. Verify the assembly is installed and trusted on the SQL Server (or remove/disable "
-                    + "any database trigger or function that depends on it), then try again.";
+                _errorMessage = BuildComsasiaUnavailableMessage(comsasiaStatus);
                 return;
             }
 
@@ -550,7 +549,27 @@ WHERE Field15 = {record.Field15};");
         return distinctMessages.Count == 0 ? "Unknown error." : string.Join(" ", distinctMessages);
     }
 
-    private static async Task<bool> IsComsasiaAssemblyAvailableAsync(StaffDbContext db)
+    private static string BuildComsasiaUnavailableMessage(ComsasiaStatus status)
+    {
+        if (!status.ClrEnabled && !status.AssemblyExists)
+        {
+            return "Unable to save personnel because SQL Server CLR is disabled and the CLR assembly 'comsasia' is not installed. "
+                + "Enable CLR and install/trust the assembly (or remove/disable any database trigger or function that depends on it), "
+                + "then try again.";
+        }
+
+        if (!status.ClrEnabled)
+        {
+            return "Unable to save personnel because SQL Server CLR is disabled. Enable CLR on the SQL Server (or remove/disable "
+                + "any database trigger or function that depends on CLR), then try again.";
+        }
+
+        return "Unable to save personnel because the database server could not load the CLR assembly 'comsasia'. Verify the assembly "
+            + "is installed and trusted on the SQL Server (or remove/disable any database trigger or function that depends on it), "
+            + "then try again.";
+    }
+
+    private static async Task<ComsasiaStatus> GetComsasiaStatusAsync(StaffDbContext db)
     {
         var connection = db.Database.GetDbConnection();
         var shouldClose = connection.State != ConnectionState.Open;
@@ -563,9 +582,20 @@ WHERE Field15 = {record.Field15};");
         try
         {
             await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM sys.assemblies WHERE name = 'comsasia') THEN 1 ELSE 0 END AS bit);";
-            var result = await command.ExecuteScalarAsync();
-            return result is bool available && available;
+            command.CommandText = @"
+SELECT
+    CAST((SELECT value_in_use FROM sys.configurations WHERE name = 'clr enabled') AS bit) AS ClrEnabled,
+    CAST(CASE WHEN EXISTS (SELECT 1 FROM sys.assemblies WHERE name = 'comsasia') THEN 1 ELSE 0 END AS bit) AS AssemblyExists;";
+
+            await using var reader = await command.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                var clrEnabled = reader.GetBoolean(0);
+                var assemblyExists = reader.GetBoolean(1);
+                return new ComsasiaStatus(clrEnabled, assemblyExists);
+            }
+
+            return new ComsasiaStatus(false, false);
         }
         finally
         {
@@ -575,6 +605,8 @@ WHERE Field15 = {record.Field15};");
             }
         }
     }
+
+    private sealed record ComsasiaStatus(bool ClrEnabled, bool AssemblyExists);
 
     private sealed class PersonnelRecord
     {
