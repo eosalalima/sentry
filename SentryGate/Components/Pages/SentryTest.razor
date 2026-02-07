@@ -376,7 +376,7 @@ FROM [dbo].[MyDataTable];")
         }
 
         var deviceName = _devices.FirstOrDefault(device => device.SerialNumber == deviceSerial)?.Name ?? deviceSerial ?? "Unknown Device";
-        var message = $"Entry confirmed: {logType} at {deviceName} on {timestamp:yyyy-MM-dd} {timestamp:HH:mm:ss}. Ref: {logId}";
+        var message = $"Entry confirmed: {logType} at {deviceName} on {timestamp:yyyy-MM-dd} {timestamp:HH:mm:ss}. Ref: {logId}. Mobile: {mobileNumber}";
 
         var result = await Task.Run(() => SendSms(portName, mobileNumber, message, _smsSettings));
         if (!result.Success)
