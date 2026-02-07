@@ -108,82 +108,92 @@ else
 
 @if (_showDialog)
 {
-    <dialog open class="p-4">
-        <h2 class="h4 mb-3">@(_isNewRecord ? "Add Personnel" : "Edit Personnel")</h2>
-        <EditForm Model="_editModel" OnValidSubmit="SavePersonnelAsync">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Last Name</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field01" />
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5 mb-0">@(_isNewRecord ? "Add Personnel" : "Edit Personnel")</h2>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseDialog"></button>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">First Name</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field02" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Middle Initial</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field03" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Designation</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field04" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Birth Date</label>
-                    <InputDate class="form-control" @bind-Value="_editModel.Field05" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Field06</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field06" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Field07</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field07" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Field08</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field08" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Field09</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field09" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Field10</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field10" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Field11</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field11" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Field12</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field12" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Mobile Number</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field13" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Field14</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field14" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Access Number</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field15" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Status</label>
-                    <InputText class="form-control" @bind-Value="_editModel.Field16" />
-                </div>
-            </div>
+                <div class="modal-body">
+                    <EditForm Model="_editModel" OnValidSubmit="SavePersonnelAsync">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Last Name</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field01" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">First Name</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field02" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Middle Initial</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field03" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Designation</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field04" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Birth Date</label>
+                                <InputDate class="form-control" @bind-Value="_editModel.Field05" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Field06</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field06" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Field07</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field07" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Field08</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field08" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Field09</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field09" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Field10</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field10" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Field11</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field11" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Field12</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field12" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Mobile Number</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field13" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Field14</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field14" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Access Number</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field15" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Status</label>
+                                <InputText class="form-control" @bind-Value="_editModel.Field16" />
+                            </div>
+                        </div>
 
-            <div class="mt-4 d-flex justify-content-end gap-2">
-                <button class="btn btn-secondary" type="button" @onclick="CloseDialog">Cancel</button>
-                <button class="btn btn-primary" type="submit" disabled="@_isSaving">Save</button>
+                        <div class="mt-4 d-flex justify-content-end gap-2">
+                            <button class="btn btn-secondary" type="button" @onclick="CloseDialog">Cancel</button>
+                            <button class="btn btn-primary" type="submit" disabled="@_isSaving">Save</button>
+                        </div>
+                    </EditForm>
+                </div>
             </div>
-        </EditForm>
-    </dialog>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
 }
 
 @code {
