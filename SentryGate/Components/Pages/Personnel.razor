@@ -437,7 +437,7 @@ WHERE Field15 = {_editingOriginalAccessNumber};");
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Unable to save personnel: {ex.Message}";
+            _errorMessage = BuildSaveErrorMessage(ex);
         }
         finally
         {
@@ -497,6 +497,35 @@ WHERE Field15 = {record.Field15};");
     private static string FormatDate(DateTime? date)
     {
         return date.HasValue ? date.Value.ToString("yyyy-MM-dd") : string.Empty;
+    }
+
+    private static string BuildSaveErrorMessage(Exception ex)
+    {
+        var message = GetFullExceptionMessage(ex);
+        if (message.Contains("comsasia", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("fileloadexception", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("assembly", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Unable to save personnel because the database server could not load the CLR assembly "
+                + "'comsasia'. Verify the assembly is installed and trusted on the SQL Server (or remove/disable "
+                + "any database trigger or function that depends on it), then try again.";
+        }
+
+        return $"Unable to save personnel: {message}";
+    }
+
+    private static string GetFullExceptionMessage(Exception ex)
+    {
+        var messages = new List<string>();
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            if (!string.IsNullOrWhiteSpace(current.Message))
+            {
+                messages.Add(current.Message.Trim());
+            }
+        }
+
+        return messages.Count == 0 ? "Unknown error." : string.Join(" ", messages);
     }
 
     private sealed class PersonnelRecord
