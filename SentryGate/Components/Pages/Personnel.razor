@@ -253,7 +253,7 @@ else
             _totalCount = await db.Database.SqlQueryRaw<int>(@"
 SELECT COUNT(*) AS [Value]
 FROM [dbo].[MyDataTable]
-WHERE (@term = '' OR Field01 LIKE @like OR Field02 LIKE @like OR Field15 LIKE @like);",
+WHERE (@term = '' OR Field01 LIKE @like OR Field02 LIKE @like OR Field15 LIKE @like)",
                     countTermParameter,
                     countLikeParameter)
                 .SingleAsync();
@@ -337,7 +337,7 @@ SELECT TOP 8 LTRIM(RTRIM(CONCAT(Field02, ' ', Field01))) AS [Value]
 FROM [dbo].[MyDataTable]
 WHERE (@term = '' OR Field01 LIKE @like OR Field02 LIKE @like OR Field15 LIKE @like)
   AND (Field01 IS NOT NULL OR Field02 IS NOT NULL)
-ORDER BY Field02, Field01;",
+ORDER BY Field02, Field01",
                     termParameter,
                     likeParameter)
                 .ToListAsync();
