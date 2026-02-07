@@ -19,6 +19,22 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <button class="btn btn-primary" type="button" @onclick="OpenAddDialog">Add</button>
+        <div class="mt-2">
+            <label class="form-label small text-muted" for="personnelSearch">Search personnel</label>
+            <InputText id="personnelSearch"
+                       class="form-control"
+                       placeholder="Start typing a name or access number..."
+                       list="personnelSearchSuggestions"
+                       @bind-Value="_searchTerm"
+                       @bind-Value:event="oninput"
+                       @oninput="OnSearchInput" />
+            <datalist id="personnelSearchSuggestions">
+                @foreach (var suggestion in _searchSuggestions)
+                {
+                    <option value="@suggestion"></option>
+                }
+            </datalist>
+        </div>
     </div>
     <div class="text-muted">
         @if (_totalCount > 0)
@@ -210,6 +226,8 @@ else
     private bool _isNewRecord = true;
     private string? _editingOriginalAccessNumber;
     private PersonnelRecord _editModel = new();
+    private string? _searchTerm;
+    private List<string> _searchSuggestions = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -229,19 +247,31 @@ else
         try
         {
             await using var db = await StaffDbFactory.CreateDbContextAsync();
-            _totalCount = await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM [dbo].[MyDataTable]")
+            var countTermParameter = new SqlParameter("@term", _searchTerm ?? string.Empty);
+            var countLikeParameter = new SqlParameter("@like", $"%{_searchTerm}%");
+            _totalCount = await db.Database.SqlQueryRaw<int>(@"
+SELECT COUNT(*) AS [Value]
+FROM [dbo].[MyDataTable]
+WHERE (@term = '' OR Field01 LIKE @like OR Field02 LIKE @like OR Field15 LIKE @like);",
+                    countTermParameter,
+                    countLikeParameter)
                 .SingleAsync();
 
             _currentPage = Math.Min(_currentPage, TotalPages);
             var offset = (_currentPage - 1) * _pageSize;
 
             _personnel.Clear();
+            var termParameter = new SqlParameter("@term", _searchTerm ?? string.Empty);
+            var likeParameter = new SqlParameter("@like", $"%{_searchTerm}%");
             var results = await db.Database.SqlQueryRaw<PersonnelRecord>(@"
 SELECT Field01, Field02, Field03, Field04, TRY_CONVERT(datetime, Field05) AS Field05, Field06, Field07, Field08,
        Field09, Field10, Field11, Field12, Field13, Field14, Field15, Field16
 FROM [dbo].[MyDataTable]
+WHERE (@term = '' OR Field01 LIKE @like OR Field02 LIKE @like OR Field15 LIKE @like)
 ORDER BY Field02, Field03, Field01
 OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;",
+                    termParameter,
+                    likeParameter,
                     new SqlParameter("@offset", offset),
                     new SqlParameter("@pageSize", _pageSize))
                 .ToListAsync();
@@ -255,6 +285,49 @@ OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;",
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs args)
+    {
+        _searchTerm = args.Value?.ToString();
+        _currentPage = 1;
+        await LoadPersonnelAsync();
+        await LoadPersonnelSuggestionsAsync();
+    }
+
+    private async Task LoadPersonnelSuggestionsAsync()
+    {
+        _searchSuggestions = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            return;
+        }
+
+        try
+        {
+            await using var db = await StaffDbFactory.CreateDbContextAsync();
+            var termParameter = new SqlParameter("@term", _searchTerm ?? string.Empty);
+            var likeParameter = new SqlParameter("@like", $"%{_searchTerm}%");
+            var suggestions = await db.Database.SqlQueryRaw<string>(@"
+SELECT TOP 8 LTRIM(RTRIM(CONCAT(Field02, ' ', Field01))) AS [Value]
+FROM [dbo].[MyDataTable]
+WHERE (@term = '' OR Field01 LIKE @like OR Field02 LIKE @like OR Field15 LIKE @like)
+  AND (Field01 IS NOT NULL OR Field02 IS NOT NULL)
+ORDER BY Field02, Field01;",
+                    termParameter,
+                    likeParameter)
+                .ToListAsync();
+
+            _searchSuggestions = suggestions
+                .Where(suggestion => !string.IsNullOrWhiteSpace(suggestion))
+                .Distinct()
+                .ToList();
+        }
+        catch
+        {
+            _searchSuggestions = new List<string>();
         }
     }
 
