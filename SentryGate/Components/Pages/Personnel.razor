@@ -26,9 +26,9 @@
                        class="form-control"
                        placeholder="Start typing a name or access number..."
                        list="personnelSearchSuggestions"
-                       @bind-Value="_searchTerm"
-                       @bind-Value:event="oninput"
-                       @bind-Value:after="OnSearchInput" />
+                       Value="_searchTerm"
+                       ValueChanged="OnSearchTermChanged"
+                       ValueExpression="() => _searchTerm" />
             <datalist id="personnelSearchSuggestions">
                 @foreach (var suggestion in _searchSuggestions)
                 {
@@ -294,6 +294,17 @@ OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;",
         _currentPage = 1;
         await LoadPersonnelAsync();
         await LoadPersonnelSuggestionsAsync();
+    }
+
+    private async Task OnSearchTermChanged(string? value)
+    {
+        if (_searchTerm == value)
+        {
+            return;
+        }
+
+        _searchTerm = value;
+        await OnSearchInput();
     }
 
     private async Task LoadPersonnelSuggestionsAsync()
