@@ -504,6 +504,7 @@ WHERE Field15 = {record.Field15};");
         var message = GetFullExceptionMessage(ex);
         if (message.Contains("comsasia", StringComparison.OrdinalIgnoreCase)
             || message.Contains("fileloadexception", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("assembly id", StringComparison.OrdinalIgnoreCase)
             || message.Contains("assembly", StringComparison.OrdinalIgnoreCase))
         {
             return "Unable to save personnel because the database server could not load the CLR assembly "
@@ -523,9 +524,25 @@ WHERE Field15 = {record.Field15};");
             {
                 messages.Add(current.Message.Trim());
             }
+
+            if (current is SqlException sqlException)
+            {
+                foreach (SqlError error in sqlException.Errors)
+                {
+                    if (!string.IsNullOrWhiteSpace(error.Message))
+                    {
+                        messages.Add(error.Message.Trim());
+                    }
+                }
+            }
         }
 
-        return messages.Count == 0 ? "Unknown error." : string.Join(" ", messages);
+        var distinctMessages = messages
+            .Where(message => !string.IsNullOrWhiteSpace(message))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return distinctMessages.Count == 0 ? "Unknown error." : string.Join(" ", distinctMessages);
     }
 
     private sealed class PersonnelRecord
