@@ -30,19 +30,19 @@ public sealed class SmsModuleSender
         if (string.IsNullOrWhiteSpace(portName))
         {
             var result = new SmsSendResult(false, "SMS module COM port is not configured.");
-            LogSmsStatus(mobileNumber, result);
+            LogSmsStatus(mobileNumber, message, result);
             return result;
         }
 
         if (string.IsNullOrWhiteSpace(mobileNumber))
         {
             var result = new SmsSendResult(false, "SMS recipient mobile number is missing.");
-            LogSmsStatus(mobileNumber, result);
+            LogSmsStatus(mobileNumber, message, result);
             return result;
         }
 
         var sendResult = SendSms(deviceSettings, mobileNumber, message);
-        LogSmsStatus(mobileNumber, sendResult);
+        LogSmsStatus(mobileNumber, message, sendResult);
         return sendResult;
     }
 
@@ -261,16 +261,19 @@ public sealed class SmsModuleSender
         return false;
     }
 
-    private void LogSmsStatus(string mobileNumber, SmsSendResult result)
+    private void LogSmsStatus(string mobileNumber, string message, SmsSendResult result)
     {
         try
         {
             var timestamp = DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss");
             var recipient = string.IsNullOrWhiteSpace(mobileNumber) ? "N/A" : mobileNumber.Trim();
+            var messageBody = string.IsNullOrWhiteSpace(message)
+                ? "N/A"
+                : message.Replace("\r", " ").Replace("\n", " ").Trim();
             var response = string.IsNullOrWhiteSpace(result.Response)
                 ? "No response returned."
                 : result.Response.Replace("\r", " ").Replace("\n", " ").Trim();
-            var line = $"{timestamp} | To: {recipient} | Success: {result.Success} | {response}";
+            var line = $"{timestamp} | To: {recipient} | Message: {messageBody} | Success: {result.Success} | {response}";
             var logPath = Path.Combine(_environment.ContentRootPath, "SmsSendinglog.txt");
 
             lock (_logLock)
