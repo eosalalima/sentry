@@ -19,11 +19,17 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddDbContextFactory<AccessControlDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("AccessControlDb")));
+builder.Services.AddDbContextFactory<StaffDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("StaffDb")));
+builder.Services.AddDbContextFactory<StudentDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("StudentDb")));
 
 builder.Services.AddSingleton<TurnstileLogState>();
 builder.Services.AddSingleton<TurnstilePollingController>();
 builder.Services.Configure<PhotoOptions>(builder.Configuration.GetSection("PhotoOptions"));
 builder.Services.AddSingleton<IPhotoUrlBuilder, PhotoUrlBuilder>();
+builder.Services.AddSingleton<PersonnelLookupService>();
+builder.Services.AddSingleton<SmsModuleSender>();
 builder.Services.AddHostedService<TurnstileLogPollingWorker>();
 builder.Services.AddHostedService<DemoDeviceLogGenerator>();
 
