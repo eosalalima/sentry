@@ -171,6 +171,7 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
 
             var name = BuildName(row);
             var photoUrl = _photoUrlBuilder.Build(row.PhotoId);
+            var smsStatusMessage = await SendEntrySmsAsync(row, ct);
 
             var entry = new TurnstileLogEntry
             {
@@ -186,21 +187,20 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 DeviceName = row.DeviceName ?? row.DeviceSerialNumber,
                 VerifyMode = row.DeviceLogVerifyMode ?? row.TimeLogVerifyMode,
                 Event = row.Event,
-                EventAddress = row.EventAddress
+                EventAddress = row.EventAddress,
+                SmsStatusMessage = smsStatusMessage
             };
 
             _state.Push(entry);
-
-            await SendEntrySmsAsync(row, ct);
         }
     }
 
-    private async Task SendEntrySmsAsync(TurnstileLogRow row, CancellationToken ct)
+    private async Task<string> SendEntrySmsAsync(TurnstileLogRow row, CancellationToken ct)
     {
         var mobileNumber = await _personnelLookup.GetMobileNumberAsync(row.AccessNumber, ct);
         if (string.IsNullOrWhiteSpace(mobileNumber))
         {
-            return;
+            return "SMS not sent: missing mobile number.";
         }
 
         var gateName = row.DeviceName ?? row.DeviceSerialNumber ?? "Unknown Gate";
@@ -211,7 +211,10 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
         if (!result.Success)
         {
             _logger.LogWarning("SMS send failed for {MobileNumber}: {Reason}", mobileNumber, result.Response);
+            return $"SMS failed: {result.Response}";
         }
+
+        return $"SMS sent to {mobileNumber}.";
     }
 
     private static string BuildName(TurnstileLogRow row)
