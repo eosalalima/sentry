@@ -33,12 +33,12 @@ public sealed class PersonnelLookupService
             await using var studentDb = await _studentDbFactory.CreateDbContextAsync(ct);
 
             var staffTask = staffDb.Database.SqlQueryRaw<PersonnelUnionRow>(@"
-SELECT Field10, Field15
+SELECT Field13, Field15
 FROM [dbo].[MyDataTable]
 WHERE Field15 = {0}", accessNumber).ToListAsync(ct);
 
             var studentTask = studentDb.Database.SqlQueryRaw<PersonnelUnionRow>(@"
-SELECT Field10, Field15
+SELECT Field13, Field15
 FROM [dbo].[MyDataTable]
 WHERE Field15 = {0}", accessNumber).ToListAsync(ct);
 
@@ -46,7 +46,7 @@ WHERE Field15 = {0}", accessNumber).ToListAsync(ct);
 
             return staffTask.Result
                 .Concat(studentTask.Result)
-                .Select(row => row.Field10)
+                .Select(row => row.Field13)
                 .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
         }
         catch (Exception ex)
