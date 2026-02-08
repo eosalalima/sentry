@@ -14,8 +14,9 @@ public sealed class SmsModuleSender
 
     public SmsSendResult TrySend(string mobileNumber, string message)
     {
-        var settings = _configuration.GetSection("SmsModule").Get<SmsModuleSettings>() ?? new SmsModuleSettings();
-        var portName = BuildPortName(settings.ComPort);
+        var settings = NormalizeSettings(_configuration.GetSection("SmsModule").Get<SmsModuleSettings>() ?? new SmsModuleSettings());
+        var deviceSettings = BuildDeviceSettings(settings);
+        var portName = deviceSettings.PortName;
         if (string.IsNullOrWhiteSpace(portName))
         {
             return new SmsSendResult(false, "SMS module COM port is not configured.");
@@ -26,7 +27,7 @@ public sealed class SmsModuleSender
             return new SmsSendResult(false, "SMS recipient mobile number is missing.");
         }
 
-        return SendSms(portName, mobileNumber, message, settings);
+        return SendSms(deviceSettings, mobileNumber, message);
     }
 
     private static string BuildPortName(int? portNumber)
@@ -39,47 +40,46 @@ public sealed class SmsModuleSender
         return $"COM{portNumber}";
     }
 
-    private static SmsSendResult SendSms(string portName, string mobileNumber, string message, SmsModuleSettings settings)
+    private static SmsSendResult SendSms(SmsDeviceSettings deviceSettings, string mobileNumber, string message)
     {
-        if (!TryParseEnum(settings.Parity, Parity.None, out var parity))
+        using var port = new SerialPort(deviceSettings.PortName, deviceSettings.BaudRate, deviceSettings.Parity, deviceSettings.DataBits, deviceSettings.StopBits)
         {
-            parity = Parity.None;
-        }
-
-        if (!TryParseEnum(settings.StopBits, StopBits.One, out var stopBits))
-        {
-            stopBits = StopBits.One;
-        }
-
-        if (!TryParseEnum(settings.Handshake, Handshake.None, out var handshake))
-        {
-            handshake = Handshake.None;
-        }
-
-        using var port = new SerialPort(portName, settings.BaudRate, parity, settings.DataBits, stopBits)
-        {
-            Handshake = handshake,
-            ReadTimeout = settings.ReadTimeout,
-            WriteTimeout = settings.WriteTimeout,
-            NewLine = string.IsNullOrWhiteSpace(settings.NewLine) ? "\r\n" : settings.NewLine
+            Handshake = deviceSettings.Handshake,
+            ReadTimeout = deviceSettings.ReadTimeout,
+            WriteTimeout = deviceSettings.WriteTimeout,
+            NewLine = deviceSettings.NewLine
         };
 
         try
         {
             port.Open();
-            SendCommand(port, "AT");
-            SendCommand(port, "AT+CMGF=1");
-            SendCommand(port, "AT+CMEE=1");
+            var response = SendCommand(port, "AT");
+            if (IsErrorResponse(response))
+            {
+                return new SmsSendResult(false, response);
+            }
+
+            response = SendCommand(port, "AT+CMGF=1");
+            if (IsErrorResponse(response))
+            {
+                return new SmsSendResult(false, response);
+            }
+
+            response = SendCommand(port, "AT+CMEE=1");
+            if (IsErrorResponse(response))
+            {
+                return new SmsSendResult(false, response);
+            }
 
             port.WriteLine($"AT+CMGS=\"{mobileNumber}\"");
             var prompt = ReadUntilPrompt(port);
-            if (prompt.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+            if (IsErrorResponse(prompt))
             {
                 return new SmsSendResult(false, prompt);
             }
 
             port.Write(message + char.ConvertFromUtf32(26));
-            var response = ReadResponse(port);
+            response = ReadResponse(port);
             var success = response.Contains("OK", StringComparison.OrdinalIgnoreCase);
             return new SmsSendResult(success, response);
         }
@@ -159,6 +159,51 @@ public sealed class SmsModuleSender
         return buffer.Length == 0 ? "No response received." : buffer.ToString();
     }
 
+    private static SmsModuleSettings NormalizeSettings(SmsModuleSettings settings)
+    {
+        settings.BaudRate = Math.Max(1, settings.BaudRate);
+        settings.DataBits = Math.Max(5, settings.DataBits);
+        settings.ReadTimeout = Math.Max(1, settings.ReadTimeout);
+        settings.WriteTimeout = Math.Max(1, settings.WriteTimeout);
+        settings.NewLine = string.IsNullOrWhiteSpace(settings.NewLine) ? "\r\n" : settings.NewLine;
+        settings.Parity = string.IsNullOrWhiteSpace(settings.Parity) ? Parity.None.ToString() : settings.Parity;
+        settings.StopBits = string.IsNullOrWhiteSpace(settings.StopBits) ? StopBits.One.ToString() : settings.StopBits;
+        settings.Handshake = string.IsNullOrWhiteSpace(settings.Handshake) ? Handshake.None.ToString() : settings.Handshake;
+        return settings;
+    }
+
+    private static SmsDeviceSettings BuildDeviceSettings(SmsModuleSettings settings)
+    {
+        if (!TryParseEnum(settings.Parity, Parity.None, out var parity))
+        {
+            parity = Parity.None;
+        }
+
+        if (!TryParseEnum(settings.StopBits, StopBits.One, out var stopBits))
+        {
+            stopBits = StopBits.One;
+        }
+
+        if (!TryParseEnum(settings.Handshake, Handshake.None, out var handshake))
+        {
+            handshake = Handshake.None;
+        }
+
+        return new SmsDeviceSettings(
+            BuildPortName(settings.ComPort),
+            settings.BaudRate,
+            settings.DataBits,
+            parity,
+            stopBits,
+            handshake,
+            settings.ReadTimeout,
+            settings.WriteTimeout,
+            settings.NewLine);
+    }
+
+    private static bool IsErrorResponse(string response) =>
+        response.Contains("ERROR", StringComparison.OrdinalIgnoreCase);
+
     private static bool TryParseEnum<T>(string? value, T fallback, out T result) where T : struct
     {
         if (!string.IsNullOrWhiteSpace(value) && Enum.TryParse(value, true, out result))
@@ -183,5 +228,16 @@ public sealed class SmsModuleSettings
     public int WriteTimeout { get; set; } = 2000;
     public string NewLine { get; set; } = "\r\n";
 }
+
+public sealed record SmsDeviceSettings(
+    string PortName,
+    int BaudRate,
+    int DataBits,
+    Parity Parity,
+    StopBits StopBits,
+    Handshake Handshake,
+    int ReadTimeout,
+    int WriteTimeout,
+    string NewLine);
 
 public sealed record SmsSendResult(bool Success, string Response);
