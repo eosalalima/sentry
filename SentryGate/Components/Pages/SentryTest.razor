@@ -96,12 +96,12 @@
                             <div class="col-md-6">
                                 <label class="form-label" for="smsBaudRate">Baud rate</label>
                                 <input class="form-control" id="smsBaudRate" type="number" min="1" step="1"
-                                       @bind-value="_smsSettingsDraft.BaudRate"                                @bind-value:event="oninput" />
+                                       @bind-value="_smsSettingsDraft.BaudRate" @bind-value:event="oninput" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="smsDataBits">Data bits</label>
                                 <input class="form-control" id="smsDataBits" type="number" min="5" step="1"
-                                       @bind-value="_smsSettingsDraft.DataBits"                                @bind-value:event="oninput" />
+                                       @bind-value="_smsSettingsDraft.DataBits" @bind-value:event="oninput" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="smsParity">Parity</label>
@@ -133,12 +133,12 @@
                             <div class="col-md-6">
                                 <label class="form-label" for="smsReadTimeout">ReadTimeout (ms)</label>
                                 <input class="form-control" id="smsReadTimeout" type="number" min="0" step="1"
-                                       @bind-value="_smsSettingsDraft.ReadTimeout"                                @bind-value:event="oninput" />
+                                       @bind-value="_smsSettingsDraft.ReadTimeout" @bind-value:event="oninput" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="smsWriteTimeout">WriteTimeout (ms)</label>
                                 <input class="form-control" id="smsWriteTimeout" type="number" min="0" step="1"
-                                       @bind-value="_smsSettingsDraft.WriteTimeout"                                @bind-value:event="oninput" />
+                                       @bind-value="_smsSettingsDraft.WriteTimeout" @bind-value:event="oninput" />
                             </div>
                             <div class="col-md-12">
                                 <label class="form-label" for="smsNewLine">NewLine character</label>
@@ -250,7 +250,7 @@
             var recordDate = DateTime.Now.Date;
             var logType = LogTypes[_random.Next(LogTypes.Length)];
             var logId = Guid.NewGuid();
-            var accessNumber = selectedPersonnel.Field01;
+            var accessNumber = selectedPersonnel.Field15;
             if (string.IsNullOrWhiteSpace(accessNumber))
             {
                 _errorMessage = "Unable to add log entry because the selected personnel does not have a valid access number.";
@@ -606,6 +606,7 @@ DateTimeOffset timestamp)
         public string? Field03 { get; set; }
         public string? Field04 { get; set; }
         public string? Field13 { get; set; }
+        public string? Field15 { get; set; }
 
         public string DisplayName
         {
