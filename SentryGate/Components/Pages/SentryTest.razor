@@ -333,12 +333,12 @@ ORDER BY Name;")
             await using var studentDb = await StudentDbFactory.CreateDbContextAsync();
 
             var staffPersonnelTask = staffDb.Database.SqlQueryRaw<PersonnelOption>(@"
-SELECT Field01, Field02, Field03, Field04, Field13
+SELECT Field01, Field02, Field03, Field04, Field13, Field15
 FROM [dbo].[MyDataTable]")
                 .ToListAsync();
 
             var studentPersonnelTask = studentDb.Database.SqlQueryRaw<PersonnelOption>(@"
-SELECT Field01, Field02, Field03, Field04, Field13
+SELECT Field01, Field02, Field03, Field04, Field13, Field15
 FROM [dbo].[MyDataTable]")
                 .ToListAsync();
 
