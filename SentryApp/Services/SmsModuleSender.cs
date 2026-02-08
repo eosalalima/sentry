@@ -1,15 +1,25 @@
 using System.IO.Ports;
 using System.Text;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace SentryApp.Services;
 
 public sealed class SmsModuleSender
 {
     private readonly IConfiguration _configuration;
+    private readonly IWebHostEnvironment _environment;
+    private readonly ILogger<SmsModuleSender> _logger;
+    private readonly object _logLock = new();
 
-    public SmsModuleSender(IConfiguration configuration)
+    public SmsModuleSender(
+        IConfiguration configuration,
+        IWebHostEnvironment environment,
+        ILogger<SmsModuleSender> logger)
     {
         _configuration = configuration;
+        _environment = environment;
+        _logger = logger;
     }
 
     public SmsSendResult TrySend(string mobileNumber, string message)
@@ -19,15 +29,21 @@ public sealed class SmsModuleSender
         var portName = deviceSettings.PortName;
         if (string.IsNullOrWhiteSpace(portName))
         {
-            return new SmsSendResult(false, "SMS module COM port is not configured.");
+            var result = new SmsSendResult(false, "SMS module COM port is not configured.");
+            LogSmsStatus(mobileNumber, result);
+            return result;
         }
 
         if (string.IsNullOrWhiteSpace(mobileNumber))
         {
-            return new SmsSendResult(false, "SMS recipient mobile number is missing.");
+            var result = new SmsSendResult(false, "SMS recipient mobile number is missing.");
+            LogSmsStatus(mobileNumber, result);
+            return result;
         }
 
-        return SendSms(deviceSettings, mobileNumber, message);
+        var sendResult = SendSms(deviceSettings, mobileNumber, message);
+        LogSmsStatus(mobileNumber, sendResult);
+        return sendResult;
     }
 
     private static string BuildPortName(int? portNumber)
@@ -243,6 +259,29 @@ public sealed class SmsModuleSender
 
         result = fallback;
         return false;
+    }
+
+    private void LogSmsStatus(string mobileNumber, SmsSendResult result)
+    {
+        try
+        {
+            var timestamp = DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            var recipient = string.IsNullOrWhiteSpace(mobileNumber) ? "N/A" : mobileNumber.Trim();
+            var response = string.IsNullOrWhiteSpace(result.Response)
+                ? "No response returned."
+                : result.Response.Replace("\r", " ").Replace("\n", " ").Trim();
+            var line = $"{timestamp} | To: {recipient} | Success: {result.Success} | {response}";
+            var logPath = Path.Combine(_environment.ContentRootPath, "SmsSendinglog.txt");
+
+            lock (_logLock)
+            {
+                File.AppendAllText(logPath, line + Environment.NewLine);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to write SMS sending log entry.");
+        }
     }
 }
 
