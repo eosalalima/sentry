@@ -25,8 +25,9 @@
             <label class="form-label small text-muted" for="personnelSearch">Search personnel</label>
 
             <InputText id="personnelSearch" class="form-control" style="min-width: 360px;"
-                       placeholder="Start typing a name or access number..." list="personnelSearchSuggestions" Value=""
-                       ValueChanged="OnSearchTermChanged" ValueExpression="" />
+                       placeholder="Start typing a name or access number..." list="personnelSearchSuggestions"
+                       Value="_searchTerm" ValueChanged="OnSearchTermChanged"
+                       ValueExpression="() => _searchTerm" />
 
             <datalist id="personnelSearchSuggestions">
                 @foreach (var suggestion in _searchSuggestions)
