@@ -11,6 +11,8 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
     private readonly TurnstileLogState _state;
     private readonly IPhotoUrlBuilder _photoUrlBuilder;
     private readonly TurnstilePollingController _controller;
+    private readonly PersonnelLookupService _personnelLookup;
+    private readonly SmsModuleSender _smsSender;
     private readonly IConfiguration _config;
     private readonly ILogger<TurnstileLogPollingWorker> _logger;
 
@@ -30,6 +32,8 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         TurnstileLogState state,
         IPhotoUrlBuilder photoUrlBuilder,
         TurnstilePollingController controller,
+        PersonnelLookupService personnelLookup,
+        SmsModuleSender smsSender,
         IConfiguration config,
         ILogger<TurnstileLogPollingWorker> logger)
     {
@@ -37,6 +41,8 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         _state = state;
         _photoUrlBuilder = photoUrlBuilder;
         _controller = controller;
+        _personnelLookup = personnelLookup;
+        _smsSender = smsSender;
         _config = config;
         _logger = logger;
 
@@ -184,6 +190,27 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
             };
 
             _state.Push(entry);
+
+            await SendEntrySmsAsync(row, ct);
+        }
+    }
+
+    private async Task SendEntrySmsAsync(TurnstileLogRow row, CancellationToken ct)
+    {
+        var mobileNumber = await _personnelLookup.GetMobileNumberAsync(row.AccessNumber, ct);
+        if (string.IsNullOrWhiteSpace(mobileNumber))
+        {
+            return;
+        }
+
+        var gateName = row.DeviceName ?? row.DeviceSerialNumber ?? "Unknown Gate";
+        var localTime = row.TimeLogStamp.ToLocalTime();
+        var message = $"Entry confirmed: IN at {gateName} on {localTime:yyyy-MM-dd} {localTime:HH:mm:ss}. Ref: {row.TimeLogId}";
+
+        var result = _smsSender.TrySend(mobileNumber, message);
+        if (!result.Success)
+        {
+            _logger.LogWarning("SMS send failed for {MobileNumber}: {Reason}", mobileNumber, result.Response);
         }
     }
 
