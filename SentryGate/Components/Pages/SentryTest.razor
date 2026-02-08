@@ -266,7 +266,7 @@ VALUES
             await LoadRecentLogsAsync(db);
             _statusMessage = $"Added a {logType} entry for access {accessNumber} on device {deviceSerial}.";
 
-            await SendEntrySmsAsync(selectedPersonnel, deviceSerial, logType, logId, now);
+            @* await SendEntrySmsAsync(selectedPersonnel, deviceSerial, logType, logId, now); *@
         }
         catch (Exception ex)
         {
