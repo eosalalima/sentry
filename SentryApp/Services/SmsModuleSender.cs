@@ -56,32 +56,37 @@ public sealed class SmsModuleSender
             var response = SendCommand(port, "AT");
             if (IsErrorResponse(response))
             {
-                return new SmsSendResult(false, response);
+                return new SmsSendResult(false, DescribeFailure(response));
             }
 
             response = SendCommand(port, "AT+CMGF=1");
             if (IsErrorResponse(response))
             {
-                return new SmsSendResult(false, response);
+                return new SmsSendResult(false, DescribeFailure(response));
             }
 
             response = SendCommand(port, "AT+CMEE=1");
             if (IsErrorResponse(response))
             {
-                return new SmsSendResult(false, response);
+                return new SmsSendResult(false, DescribeFailure(response));
             }
 
             port.WriteLine($"AT+CMGS=\"{mobileNumber}\"");
             var prompt = ReadUntilPrompt(port);
             if (IsErrorResponse(prompt))
             {
-                return new SmsSendResult(false, prompt);
+                return new SmsSendResult(false, DescribeFailure(prompt));
             }
 
             port.Write(message + char.ConvertFromUtf32(26));
             response = ReadResponse(port);
             var success = response.Contains("OK", StringComparison.OrdinalIgnoreCase);
-            return new SmsSendResult(success, response);
+            if (success)
+            {
+                return new SmsSendResult(true, response);
+            }
+
+            return new SmsSendResult(false, DescribeFailure(response));
         }
         catch (Exception ex)
         {
@@ -203,6 +208,31 @@ public sealed class SmsModuleSender
 
     private static bool IsErrorResponse(string response) =>
         response.Contains("ERROR", StringComparison.OrdinalIgnoreCase);
+
+    private static string DescribeFailure(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+        {
+            return "SMS send failed: Empty response received.";
+        }
+
+        var trimmed = response.Trim();
+        foreach (var line in trimmed.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line.Contains("CME ERROR", StringComparison.OrdinalIgnoreCase) ||
+                line.Contains("CMS ERROR", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"SMS send failed: {line.Trim()}";
+            }
+        }
+
+        if (trimmed.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"SMS send failed: {trimmed}";
+        }
+
+        return $"SMS send failed: {trimmed}";
+    }
 
     private static bool TryParseEnum<T>(string? value, T fallback, out T result) where T : struct
     {
