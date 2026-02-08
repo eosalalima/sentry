@@ -16,6 +16,7 @@ public sealed class TurnstileLogEntry
     public string? VerifyMode { get; init; }
     public string? Event { get; init; }
     public string? EventAddress { get; init; }
+    public string SmsStatusMessage { get; init; } = "SMS status pending.";
 }
 
 public sealed class TurnstileQueueItem

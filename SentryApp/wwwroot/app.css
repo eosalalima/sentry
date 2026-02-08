@@ -268,6 +268,30 @@
   opacity:.65;
 }
 
+.spot-sms{
+  margin: 26px auto 0;
+  max-width: 520px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0,0,0,.08);
+  text-align:left;
+}
+
+.spot-sms-label{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  opacity: .6;
+}
+
+.spot-sms-message{
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: .85;
+  word-break: break-word;
+}
+
 .spot-empty{
   padding:40px 22px;
   opacity:.7;
