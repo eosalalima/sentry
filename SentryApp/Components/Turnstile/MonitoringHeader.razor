@@ -105,6 +105,8 @@
                                 placeholder="e.g. 3" />
                             <button class="btn btn-outline-secondary" type="button" @onclick="OpenSmsTestModal"
                                 disabled="@_isPollingActive">Send test message</button>
+                            <button class="btn btn-outline-secondary" type="button" @onclick="OpenSmsConfigModal"
+                                disabled="@_isPollingActive">SMS Config</button>
                         </div>
                     </div>
 
@@ -193,6 +195,96 @@
     <div class="modal-backdrop fade show" @onclick="CloseSmsTestModal"></div>
 }
 
+@if (_showSmsConfigModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">SMS Device Configuration</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseSmsConfigModal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsConfigComPort">Serial Port Number (COM)</label>
+                            <input class="form-control" id="smsConfigComPort" type="number" min="1" step="1"
+                                @bind-value="_smsComPortNumber" @bind-value:event="oninput"
+                                disabled="@_isPollingActive" placeholder="e.g. 4" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsConfigBaudRate">Baud rate</label>
+                            <input class="form-control" id="smsConfigBaudRate" type="number" min="1" step="1"
+                                @bind-value="_smsBaudRate" @bind-value:event="oninput" disabled="@_isPollingActive" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsConfigDataBits">Data bits</label>
+                            <input class="form-control" id="smsConfigDataBits" type="number" min="5" step="1"
+                                @bind-value="_smsDataBits" @bind-value:event="oninput" disabled="@_isPollingActive" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsConfigParity">Parity</label>
+                            <select class="form-select" id="smsConfigParity" @bind="_smsParity"
+                                disabled="@_isPollingActive">
+                                @foreach (var option in SmsParityOptions)
+                                {
+                                    <option value="@option">@option</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsConfigStopBits">StopBits</label>
+                            <select class="form-select" id="smsConfigStopBits" @bind="_smsStopBits"
+                                disabled="@_isPollingActive">
+                                @foreach (var option in SmsStopBitsOptions)
+                                {
+                                    <option value="@option">@option</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsConfigHandshake">Handshake</label>
+                            <select class="form-select" id="smsConfigHandshake" @bind="_smsHandshake"
+                                disabled="@_isPollingActive">
+                                @foreach (var option in SmsHandshakeOptions)
+                                {
+                                    <option value="@option">@option</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsConfigReadTimeout">ReadTimeout (ms)</label>
+                            <input class="form-control" id="smsConfigReadTimeout" type="number" min="1" step="1"
+                                @bind-value="_smsReadTimeoutMs" @bind-value:event="oninput"
+                                disabled="@_isPollingActive" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="smsConfigWriteTimeout">WriteTimeout (ms)</label>
+                            <input class="form-control" id="smsConfigWriteTimeout" type="number" min="1" step="1"
+                                @bind-value="_smsWriteTimeoutMs" @bind-value:event="oninput"
+                                disabled="@_isPollingActive" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="smsConfigNewLine">NewLine character</label>
+                            <input class="form-control" id="smsConfigNewLine" type="text" @bind="SmsNewLineDisplay"
+                                disabled="@_isPollingActive" placeholder="\\r\\n" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary" type="button" @onclick="SaveSmsConfigAsync"
+                        disabled="@_isPollingActive">Save</button>
+                    <button class="btn btn-secondary" type="button" @onclick="CloseSmsConfigModal"
+                        disabled="@_isPollingActive">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show" @onclick="CloseSmsConfigModal"></div>
+}
+
 @if (_showToast)
 {
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
@@ -236,6 +328,14 @@
     private int _lookbackSecondsOnStart = 3;
     private int _maxRowsPerPoll = 20;
     private int _smsComPortNumber = 1;
+    private int _smsBaudRate = 9600;
+    private int _smsDataBits = 8;
+    private string _smsParity = Parity.None.ToString();
+    private string _smsStopBits = StopBits.One.ToString();
+    private string _smsHandshake = Handshake.None.ToString();
+    private int _smsReadTimeoutMs = 2000;
+    private int _smsWriteTimeoutMs = 2000;
+    private string _smsNewLine = "\r\n";
     private bool _isPollingActive;
     private List<ZkDevice> _devices = new();
     private bool _showToast;
@@ -246,6 +346,17 @@
     private string _smsTestMobileNumber = string.Empty;
     private string _smsTestMessage = string.Empty;
     private bool _isSendingSmsTest;
+    private bool _showSmsConfigModal;
+
+    private static readonly string[] SmsParityOptions = { "None", "Odd", "Even", "Mark", "Space" };
+    private static readonly string[] SmsStopBitsOptions = { "None", "One", "OnePointFive", "Two" };
+    private static readonly string[] SmsHandshakeOptions =
+    {
+        "None",
+        "XOnXOff",
+        "RequestToSend",
+        "RequestToSendXOnXOff"
+    };
 
     private async Task OpenSettingsAsync()
     {
@@ -271,6 +382,14 @@
         Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", 3));
         _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", 20);
         _smsComPortNumber = Configuration.GetValue("SmsModule:ComPort", 1);
+        _smsBaudRate = Configuration.GetValue("SmsModule:BaudRate", 9600);
+        _smsDataBits = Configuration.GetValue("SmsModule:DataBits", 8);
+        _smsParity = Configuration.GetValue("SmsModule:Parity", Parity.None.ToString());
+        _smsStopBits = Configuration.GetValue("SmsModule:StopBits", StopBits.One.ToString());
+        _smsHandshake = Configuration.GetValue("SmsModule:Handshake", Handshake.None.ToString());
+        _smsReadTimeoutMs = Configuration.GetValue("SmsModule:ReadTimeout", 2000);
+        _smsWriteTimeoutMs = Configuration.GetValue("SmsModule:WriteTimeout", 2000);
+        _smsNewLine = Configuration.GetValue("SmsModule:NewLine", "\r\n");
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
@@ -360,6 +479,22 @@
 
     private void CloseSmsTestModal() => _showSmsTestModal = false;
 
+    private void OpenSmsConfigModal() => _showSmsConfigModal = true;
+
+    private void CloseSmsConfigModal() => _showSmsConfigModal = false;
+
+    private async Task SaveSmsConfigAsync()
+    {
+        if (_isPollingActive)
+            return;
+
+        NormalizeSmsModuleSettings();
+
+        await UpdateSmsModuleSettingsAsync();
+        _showSmsConfigModal = false;
+        await ShowToastAsync("SMS module settings saved.", "success");
+    }
+
     private async Task SendTestSmsAsync()
     {
         if (_isSendingSmsTest)
@@ -383,6 +518,8 @@
             return;
         }
 
+        NormalizeSmsModuleSettings();
+
         _isSendingSmsTest = true;
         await InvokeAsync(StateHasChanged);
 
@@ -395,7 +532,8 @@
                 return;
             }
 
-            var result = await Task.Run(() => SendSms(portName, _smsTestMobileNumber, _smsTestMessage));
+            var smsSettings = BuildSmsModuleSettings();
+            var result = await Task.Run(() => SendSms(portName, _smsTestMobileNumber, _smsTestMessage, smsSettings));
 
             if (result.Success)
             {
@@ -437,6 +575,14 @@
             Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", _lookbackSecondsOnStart));
             _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
             _smsComPortNumber = Configuration.GetValue("SmsModule:ComPort", _smsComPortNumber);
+            _smsBaudRate = Configuration.GetValue("SmsModule:BaudRate", _smsBaudRate);
+            _smsDataBits = Configuration.GetValue("SmsModule:DataBits", _smsDataBits);
+            _smsParity = Configuration.GetValue("SmsModule:Parity", _smsParity);
+            _smsStopBits = Configuration.GetValue("SmsModule:StopBits", _smsStopBits);
+            _smsHandshake = Configuration.GetValue("SmsModule:Handshake", _smsHandshake);
+            _smsReadTimeoutMs = Configuration.GetValue("SmsModule:ReadTimeout", _smsReadTimeoutMs);
+            _smsWriteTimeoutMs = Configuration.GetValue("SmsModule:WriteTimeout", _smsWriteTimeoutMs);
+            _smsNewLine = Configuration.GetValue("SmsModule:NewLine", _smsNewLine);
 
             var appSettingsPath = Path.Combine(Environment.ContentRootPath, "appsettings.json");
             if (File.Exists(appSettingsPath))
@@ -477,6 +623,22 @@
                     {
                         if (TryReadJsonValue(smsModule["ComPort"], out int comPort))
                             _smsComPortNumber = comPort;
+                        if (TryReadJsonValue(smsModule["BaudRate"], out int baudRate))
+                            _smsBaudRate = baudRate;
+                        if (TryReadJsonValue(smsModule["DataBits"], out int dataBits))
+                            _smsDataBits = dataBits;
+                        if (TryReadJsonValue(smsModule["Parity"], out string? parity) && parity != null)
+                            _smsParity = parity;
+                        if (TryReadJsonValue(smsModule["StopBits"], out string? stopBits) && stopBits != null)
+                            _smsStopBits = stopBits;
+                        if (TryReadJsonValue(smsModule["Handshake"], out string? handshake) && handshake != null)
+                            _smsHandshake = handshake;
+                        if (TryReadJsonValue(smsModule["ReadTimeout"], out int readTimeout))
+                            _smsReadTimeoutMs = readTimeout;
+                        if (TryReadJsonValue(smsModule["WriteTimeout"], out int writeTimeout))
+                            _smsWriteTimeoutMs = writeTimeout;
+                        if (TryReadJsonValue(smsModule["NewLine"], out string? newLine) && newLine != null)
+                            _smsNewLine = newLine;
                     }
                 }
             }
@@ -551,6 +713,42 @@
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Failed to update appsettings.json: {ex}");
+        }
+    }
+
+    private async Task UpdateSmsModuleSettingsAsync()
+    {
+        var appSettingsPath = Path.Combine(Environment.ContentRootPath, "appsettings.json");
+        if (!File.Exists(appSettingsPath))
+            return;
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(appSettingsPath);
+            var root = JsonNode.Parse(json) as JsonObject ?? new JsonObject();
+
+            root["SmsModule"] ??= new JsonObject();
+            if (root["SmsModule"] is JsonObject smsModule)
+            {
+                smsModule["ComPort"] = _smsComPortNumber;
+                smsModule["BaudRate"] = _smsBaudRate;
+                smsModule["DataBits"] = _smsDataBits;
+                smsModule["Parity"] = _smsParity;
+                smsModule["StopBits"] = _smsStopBits;
+                smsModule["Handshake"] = _smsHandshake;
+                smsModule["ReadTimeout"] = _smsReadTimeoutMs;
+                smsModule["WriteTimeout"] = _smsWriteTimeoutMs;
+                smsModule["NewLine"] = _smsNewLine;
+            }
+
+            await File.WriteAllTextAsync(appSettingsPath, root.ToJsonString(new JsonSerializerOptions
+            {
+                WriteIndented = true
+            }));
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to update SMS module settings: {ex}");
         }
     }
 
@@ -645,14 +843,15 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private static SmsSendResult SendSms(string portName, string mobileNumber, string message)
+    private static SmsSendResult SendSms(string portName, string mobileNumber, string message, SmsModuleSettings settings)
     {
-        using var port = new SerialPort(portName, 9600, Parity.None, 8, StopBits.One)
+        using var port = new SerialPort(portName, settings.BaudRate, settings.Parity, settings.DataBits,
+        settings.StopBits)
         {
-            Handshake = Handshake.None,
-            ReadTimeout = 2000,
-            WriteTimeout = 2000,
-            NewLine = "\r\n"
+            Handshake = settings.Handshake,
+            ReadTimeout = settings.ReadTimeout,
+            WriteTimeout = settings.WriteTimeout,
+            NewLine = settings.NewLine
         };
 
         try
@@ -749,7 +948,71 @@
         return buffer.Length == 0 ? "No response received." : buffer.ToString();
     }
 
+    private SmsModuleSettings BuildSmsModuleSettings()
+    {
+        return new SmsModuleSettings(
+            Math.Max(1, _smsBaudRate),
+            Math.Max(5, _smsDataBits),
+            ParseSmsParity(_smsParity),
+            ParseSmsStopBits(_smsStopBits),
+            ParseSmsHandshake(_smsHandshake),
+            Math.Max(1, _smsReadTimeoutMs),
+            Math.Max(1, _smsWriteTimeoutMs),
+            string.IsNullOrWhiteSpace(_smsNewLine) ? "\r\n" : _smsNewLine);
+    }
+
+    private void NormalizeSmsModuleSettings()
+    {
+        _smsComPortNumber = Math.Max(1, _smsComPortNumber);
+        _smsBaudRate = Math.Max(1, _smsBaudRate);
+        _smsDataBits = Math.Max(5, _smsDataBits);
+        _smsReadTimeoutMs = Math.Max(1, _smsReadTimeoutMs);
+        _smsWriteTimeoutMs = Math.Max(1, _smsWriteTimeoutMs);
+        _smsParity = SmsParityOptions.Contains(_smsParity, StringComparer.OrdinalIgnoreCase)
+        ? _smsParity
+        : Parity.None.ToString();
+        _smsStopBits = SmsStopBitsOptions.Contains(_smsStopBits, StringComparer.OrdinalIgnoreCase)
+        ? _smsStopBits
+        : StopBits.One.ToString();
+        _smsHandshake = SmsHandshakeOptions.Contains(_smsHandshake, StringComparer.OrdinalIgnoreCase)
+        ? _smsHandshake
+        : Handshake.None.ToString();
+        _smsNewLine = string.IsNullOrWhiteSpace(_smsNewLine) ? "\r\n" : _smsNewLine;
+    }
+
+    private string SmsNewLineDisplay
+    {
+        get => _smsNewLine.Replace("\r", "\\r").Replace("\n", "\\n");
+        set => _smsNewLine = InterpretEscapeSequences(value);
+    }
+
+    private static string InterpretEscapeSequences(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "\r\n";
+
+        return value.Replace("\\r", "\r").Replace("\\n", "\n");
+    }
+
+    private static Parity ParseSmsParity(string value)
+        => Enum.TryParse(value, true, out Parity parsed) ? parsed : Parity.None;
+
+    private static StopBits ParseSmsStopBits(string value)
+        => Enum.TryParse(value, true, out StopBits parsed) ? parsed : StopBits.One;
+
+    private static Handshake ParseSmsHandshake(string value)
+        => Enum.TryParse(value, true, out Handshake parsed) ? parsed : Handshake.None;
+
     private sealed record SmsSendResult(bool Success, string Response);
+    private sealed record SmsModuleSettings(
+        int BaudRate,
+        int DataBits,
+        Parity Parity,
+        StopBits StopBits,
+        Handshake Handshake,
+        int ReadTimeout,
+        int WriteTimeout,
+        string NewLine);
 
     private static bool TryReadJsonValue<T>(JsonNode? node, out T value)
     {
