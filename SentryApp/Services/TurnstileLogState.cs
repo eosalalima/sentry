@@ -6,12 +6,14 @@ public sealed class TurnstileLogState : IDisposable
 {
     private const string AllDevicesValue = "1";
     private const int MaxQueueItems = 12;
+    private static readonly TimeSpan QueueRetention = TimeSpan.FromSeconds(10);
     private readonly int _defaultHighlightDisplayDurationMs;
 
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
     private readonly IConfiguration _configuration;
     private readonly HashSet<Guid> _pendingQueueEntries = new();
+    private readonly HashSet<Guid> _pendingQueueRemovals = new();
     private readonly CancellationTokenSource _disposeCts = new();
     private string _selectedDeviceSerial = AllDevicesValue;
 
@@ -85,29 +87,52 @@ public sealed class TurnstileLogState : IDisposable
                 return;
             }
 
-            _queue.Add(new TurnstileQueueItem
+            var queueItem = new TurnstileQueueItem
             {
-                Entry = entry
-            });
+                Entry = entry,
+                EnqueuedAt = DateTimeOffset.UtcNow
+            };
+
+            _queue.Add(queueItem);
 
             if (Spotlight?.TimeLogId == entry.TimeLogId)
                 Spotlight = null;
 
             TrimQueue(selectedDeviceSerialSnapshot);
             _pendingQueueEntries.Remove(entry.TimeLogId);
+
+            if (_pendingQueueRemovals.Add(entry.TimeLogId))
+                _ = RemoveEntryFromQueueAfterDelayAsync(entry.TimeLogId, selectedDeviceSerialSnapshot, _disposeCts.Token);
         }
 
         Changed?.Invoke();
     }
 
-    private void AddToQueue(TurnstileLogEntry entry)
+    private async Task RemoveEntryFromQueueAfterDelayAsync(
+        Guid entryId,
+        string selectedDeviceSerialSnapshot,
+        CancellationToken ct)
     {
-        _queue.Add(new TurnstileQueueItem
+        try
         {
-            Entry = entry
-        });
+            await Task.Delay(QueueRetention, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
 
-        TrimQueue();
+        lock (_lock)
+        {
+            var index = _queue.FindIndex(item => item.Entry.TimeLogId == entryId);
+            if (index >= 0)
+                _queue.RemoveAt(index);
+
+            _pendingQueueRemovals.Remove(entryId);
+            TrimQueue(selectedDeviceSerialSnapshot);
+        }
+
+        Changed?.Invoke();
     }
 
     private void TrimQueue(string? selectedDeviceSerial = null)
@@ -120,7 +145,7 @@ public sealed class TurnstileLogState : IDisposable
         {
             if (effectiveSerial == AllDevicesValue)
             {
-                _queue.RemoveAt(0);
+                RemoveQueueItemAt(0);
                 continue;
             }
 
@@ -130,7 +155,7 @@ public sealed class TurnstileLogState : IDisposable
             if (index < 0)
                 break;
 
-            _queue.RemoveAt(index);
+            RemoveQueueItemAt(index);
         }
     }
 
@@ -153,7 +178,15 @@ public sealed class TurnstileLogState : IDisposable
 
             if (_selectedDeviceSerial != AllDevicesValue)
             {
+                var removedItems = _queue
+                    .Where(item => !ShouldAcceptEntry(item.Entry))
+                    .Select(item => item.Entry.TimeLogId)
+                    .ToList();
+
                 _queue.RemoveAll(item => !ShouldAcceptEntry(item.Entry));
+
+                foreach (var entryId in removedItems)
+                    _pendingQueueRemovals.Remove(entryId);
 
                 if (Spotlight is not null && !ShouldAcceptEntry(Spotlight))
                     Spotlight = null;
@@ -195,5 +228,12 @@ public sealed class TurnstileLogState : IDisposable
 
         return _queue.Count(item =>
             string.Equals(item.Entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void RemoveQueueItemAt(int index)
+    {
+        var entryId = _queue[index].Entry.TimeLogId;
+        _queue.RemoveAt(index);
+        _pendingQueueRemovals.Remove(entryId);
     }
 }

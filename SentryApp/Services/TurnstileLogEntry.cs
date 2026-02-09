@@ -22,4 +22,5 @@ public sealed class TurnstileLogEntry
 public sealed class TurnstileQueueItem
 {
     public TurnstileLogEntry Entry { get; init; } = new();
+    public DateTimeOffset EnqueuedAt { get; init; } = DateTimeOffset.UtcNow;
 }
