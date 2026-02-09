@@ -143,7 +143,7 @@ WHERE dl.IsDeleted = 0
         dl.TimeLogStamp > {{0}}
      OR (dl.TimeLogStamp = {{0}} AND dl.Id > {{1}})
   )
-ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
+ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;"
             : $@"
 SELECT TOP ({_maxRowsPerPoll})
     dl.Id                AS TimeLogId,
