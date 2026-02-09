@@ -111,7 +111,7 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
 
         // IMPORTANT:
         // - We poll DeviceLogs (per your requirement)
-        // - We join AccessControl.Personnels (name) and ZKDevices (device name)
+        // - We join dbo.Personnels (name) and ZKDevices (device name)
         var sql = $@"
 SELECT TOP ({_maxRowsPerPoll})
     dl.Id                AS TimeLogId,
@@ -131,7 +131,7 @@ SELECT TOP ({_maxRowsPerPoll})
     zk.Name              AS DeviceName
 
 FROM DeviceLogs dl
-LEFT JOIN [AccessControl].[Personnels] p
+LEFT JOIN [dbo].[Personnels] p
     ON p.AccessNumber = dl.AccessNumber
    AND p.IsDeleted = 0
 LEFT JOIN ZKDevices zk
