@@ -111,10 +111,8 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
 
         // IMPORTANT:
         // - We poll DeviceLogs (per your requirement)
-        // - We join PersonnelUnion (name/photo) and ZKDevices (device name)
-        var hasPersonnelUnion = await HasPersonnelUnionAsync(db, ct);
-        var sql = hasPersonnelUnion
-            ? $@"
+        // - We join AccessControl.Personnels (name) and ZKDevices (device name)
+        var sql = $@"
 SELECT TOP ({_maxRowsPerPoll})
     dl.Id                AS TimeLogId,
     dl.TimeLogStamp      AS TimeLogStamp,
@@ -133,36 +131,9 @@ SELECT TOP ({_maxRowsPerPoll})
     zk.Name              AS DeviceName
 
 FROM DeviceLogs dl
-LEFT JOIN PersonnelUnion p
+LEFT JOIN [AccessControl].[Personnels] p
     ON p.AccessNumber = dl.AccessNumber
-LEFT JOIN ZKDevices zk
-    ON zk.IsDeleted = 0
-   AND zk.SerialNumber = dl.DeviceSerialNumber
-WHERE dl.IsDeleted = 0
-  AND (
-        dl.TimeLogStamp > {{0}}
-     OR (dl.TimeLogStamp = {{0}} AND dl.Id > {{1}})
-  )
-ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;"
-            : $@"
-SELECT TOP ({_maxRowsPerPoll})
-    dl.Id                AS TimeLogId,
-    dl.TimeLogStamp      AS TimeLogStamp,
-    dl.LogType           AS LogType,
-    dl.AccessNumber      AS AccessNumber,
-    dl.DeviceSerialNumber AS DeviceSerialNumber,
-    dl.VerifyMode        AS DeviceLogVerifyMode,
-    dl.VerifyMode        AS TimeLogVerifyMode,
-
-    NULL                 AS LastName,
-    NULL                 AS FirstName,
-    NULL                 AS PhotoId,
-
-    dl.Event             AS Event,
-    dl.EventAddress      AS EventAddress,
-    zk.Name              AS DeviceName
-
-FROM DeviceLogs dl
+   AND p.IsDeleted = 0
 LEFT JOIN ZKDevices zk
     ON zk.IsDeleted = 0
    AND zk.SerialNumber = dl.DeviceSerialNumber
@@ -317,16 +288,6 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
         if (normalized.Contains("IN", StringComparison.OrdinalIgnoreCase))
             return "IN";
         return "IN/OUT";
-    }
-
-    private static async Task<bool> HasPersonnelUnionAsync(AccessControlDbContext db, CancellationToken ct)
-    {
-        var results = await db.Database.SqlQueryRaw<int>(@"
-SELECT 1
-WHERE OBJECT_ID(N'dbo.PersonnelUnion', N'V') IS NOT NULL
-   OR OBJECT_ID(N'dbo.PersonnelUnion', N'U') IS NOT NULL;").ToListAsync(ct);
-
-        return results.Count > 0;
     }
 
     private const string DefaultSmsMessageFormat =
