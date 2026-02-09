@@ -131,10 +131,10 @@ SELECT TOP ({_maxRowsPerPoll})
     zk.Name              AS DeviceName
 
 FROM DeviceLogs dl
-LEFT JOIN [AccessControl].[Personnels] p
+LEFT JOIN [AccessControl].[dbo].[Personnels] p
     ON p.AccessNumber = dl.AccessNumber
    AND p.IsDeleted = 0
-LEFT JOIN ZKDevices zk
+LEFT JOIN [AccessControl].[dbo].[ZKDevices] zk
     ON zk.IsDeleted = 0
    AND zk.SerialNumber = dl.DeviceSerialNumber
 WHERE dl.IsDeleted = 0
