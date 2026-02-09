@@ -26,6 +26,7 @@
     private const string SelectedDeviceSerialStorageKey = "SelectedDeviceSerial";
 
     private string _selectedDeviceSerial = AllDevicesValue;
+    private string _appliedDeviceSerial = AllDevicesValue;
 
     protected override void OnInitialized()
     {
@@ -41,7 +42,11 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnStateChanged() => _ = InvokeAsync(() =>
+    {
+        ApplySelectedDeviceSerial(EffectiveSelectedDeviceSerial);
+        StateHasChanged();
+    });
 
     public void Dispose()
     {
@@ -83,12 +88,21 @@
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(storedSerial)
             ? AllDevicesValue
             : storedSerial;
-            State.UpdateSelectedDeviceSerial(_selectedDeviceSerial);
+            ApplySelectedDeviceSerial(EffectiveSelectedDeviceSerial);
         }
         catch (JSException)
         {
             _selectedDeviceSerial = AllDevicesValue;
-            State.UpdateSelectedDeviceSerial(_selectedDeviceSerial);
+            ApplySelectedDeviceSerial(EffectiveSelectedDeviceSerial);
         }
+    }
+
+    private void ApplySelectedDeviceSerial(string desiredSerial)
+    {
+        if (string.Equals(_appliedDeviceSerial, desiredSerial, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _appliedDeviceSerial = desiredSerial;
+        State.UpdateSelectedDeviceSerial(desiredSerial);
     }
 }
