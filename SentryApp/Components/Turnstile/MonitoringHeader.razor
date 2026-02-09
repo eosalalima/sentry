@@ -270,6 +270,16 @@
                             <input class="form-control" id="smsConfigNewLine" type="text" @bind="SmsNewLineDisplay"
                                 disabled="@_isPollingActive" placeholder="\\r\\n" />
                         </div>
+                        <div class="col-12">
+                            <label class="form-label" for="smsConfigMessageFormat">Message format</label>
+                            <textarea class="form-control" id="smsConfigMessageFormat" rows="4"
+                                @bind="_smsMessageFormat" disabled="@_isPollingActive"
+                                placeholder="@DefaultSmsMessageFormat"></textarea>
+                            <div class="form-text">
+                                Use placeholders like {PERSONNEL.LASTNAME}, {PERSONNEL.FIRSTNAME}, {IN or OUT},
+                                {LOGDATE=DATEFORMAT:dd-MMM-yyyy}, {LOGTIME=TIMEFORMAT:hh:mm tt}.
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -336,6 +346,7 @@
     private int _smsReadTimeoutMs = 2000;
     private int _smsWriteTimeoutMs = 2000;
     private string _smsNewLine = "\r\n";
+    private string _smsMessageFormat = DefaultSmsMessageFormat;
     private bool _isPollingActive;
     private List<ZkDevice> _devices = new();
     private bool _showToast;
@@ -357,6 +368,8 @@
         "RequestToSend",
         "RequestToSendXOnXOff"
     };
+    private const string DefaultSmsMessageFormat =
+        "{PERSONNEL.LASTNAME}, {PERSONNEL.FIRSTNAME} has {IN or OUT} on {LOGDATE=DATEFORMAT:dd-MMM-yyyy} {LOGTIME=TIMEFORMAT:hh:mm tt} * Auto-generated SMS - do not reply";
 
     private async Task OpenSettingsAsync()
     {
@@ -390,6 +403,7 @@
         _smsReadTimeoutMs = Configuration.GetValue("SmsModule:ReadTimeout", 2000);
         _smsWriteTimeoutMs = Configuration.GetValue("SmsModule:WriteTimeout", 2000);
         _smsNewLine = Configuration.GetValue("SmsModule:NewLine", "\r\n");
+        _smsMessageFormat = Configuration.GetValue("SmsModule:MessageFormat", DefaultSmsMessageFormat);
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
@@ -583,6 +597,7 @@
             _smsReadTimeoutMs = Configuration.GetValue("SmsModule:ReadTimeout", _smsReadTimeoutMs);
             _smsWriteTimeoutMs = Configuration.GetValue("SmsModule:WriteTimeout", _smsWriteTimeoutMs);
             _smsNewLine = Configuration.GetValue("SmsModule:NewLine", _smsNewLine);
+            _smsMessageFormat = Configuration.GetValue("SmsModule:MessageFormat", _smsMessageFormat);
 
             var appSettingsPath = Path.Combine(Environment.ContentRootPath, "appsettings.json");
             if (File.Exists(appSettingsPath))
@@ -639,6 +654,9 @@
                             _smsWriteTimeoutMs = writeTimeout;
                         if (TryReadJsonValue(smsModule["NewLine"], out string? newLine) && newLine != null)
                             _smsNewLine = newLine;
+                        if (TryReadJsonValue(smsModule["MessageFormat"], out string? messageFormat)
+                        && messageFormat != null)
+                            _smsMessageFormat = messageFormat;
                     }
                 }
             }
@@ -739,6 +757,7 @@
                 smsModule["ReadTimeout"] = _smsReadTimeoutMs;
                 smsModule["WriteTimeout"] = _smsWriteTimeoutMs;
                 smsModule["NewLine"] = _smsNewLine;
+                smsModule["MessageFormat"] = _smsMessageFormat;
             }
 
             await File.WriteAllTextAsync(appSettingsPath, root.ToJsonString(new JsonSerializerOptions
@@ -978,6 +997,9 @@
         ? _smsHandshake
         : Handshake.None.ToString();
         _smsNewLine = string.IsNullOrWhiteSpace(_smsNewLine) ? "\r\n" : _smsNewLine;
+        _smsMessageFormat = string.IsNullOrWhiteSpace(_smsMessageFormat)
+        ? DefaultSmsMessageFormat
+        : _smsMessageFormat;
     }
 
     private string SmsNewLineDisplay
