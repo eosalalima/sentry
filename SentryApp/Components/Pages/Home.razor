@@ -59,7 +59,7 @@
             return true;
 
         return !string.IsNullOrWhiteSpace(entry.DeviceSerialNumber)
-        && entry.DeviceSerialNumber == EffectiveSelectedDeviceSerial;
+        && string.Equals(entry.DeviceSerialNumber, EffectiveSelectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
     }
 
     private string EffectiveSelectedDeviceSerial =>
