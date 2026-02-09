@@ -36,21 +36,27 @@ public sealed class TurnstileLogState : IDisposable
 
     public void Push(TurnstileLogEntry entry)
     {
+        string selectedDeviceSerialSnapshot;
+
         lock (_lock)
         {
             if (!ShouldAcceptEntry(entry))
                 return;
 
+            selectedDeviceSerialSnapshot = _selectedDeviceSerial;
             Spotlight = entry;
 
             if (_pendingQueueEntries.Add(entry.TimeLogId))
-                _ = MoveEntryToQueueAfterDelayAsync(entry, _disposeCts.Token);
+                _ = MoveEntryToQueueAfterDelayAsync(entry, selectedDeviceSerialSnapshot, _disposeCts.Token);
         }
 
         Changed?.Invoke();
     }
 
-    private async Task MoveEntryToQueueAfterDelayAsync(TurnstileLogEntry entry, CancellationToken ct)
+    private async Task MoveEntryToQueueAfterDelayAsync(
+        TurnstileLogEntry entry,
+        string selectedDeviceSerialSnapshot,
+        CancellationToken ct)
     {
         try
         {
@@ -64,7 +70,7 @@ public sealed class TurnstileLogState : IDisposable
 
         lock (_lock)
         {
-            if (!ShouldAcceptEntry(entry))
+            if (!ShouldAcceptEntry(entry, selectedDeviceSerialSnapshot))
             {
                 if (Spotlight?.TimeLogId == entry.TimeLogId)
                     Spotlight = null;
@@ -87,7 +93,7 @@ public sealed class TurnstileLogState : IDisposable
             if (Spotlight?.TimeLogId == entry.TimeLogId)
                 Spotlight = null;
 
-            TrimQueue();
+            TrimQueue(selectedDeviceSerialSnapshot);
             _pendingQueueEntries.Remove(entry.TimeLogId);
         }
 
@@ -104,20 +110,22 @@ public sealed class TurnstileLogState : IDisposable
         TrimQueue();
     }
 
-    private void TrimQueue()
+    private void TrimQueue(string? selectedDeviceSerial = null)
     {
-        var selectedDeviceSerial = _selectedDeviceSerial;
+        var effectiveSerial = string.IsNullOrWhiteSpace(selectedDeviceSerial)
+            ? _selectedDeviceSerial
+            : selectedDeviceSerial;
 
-        while (CountForSerial(selectedDeviceSerial) > MaxQueueItems)
+        while (CountForSerial(effectiveSerial) > MaxQueueItems)
         {
-            if (selectedDeviceSerial == AllDevicesValue)
+            if (effectiveSerial == AllDevicesValue)
             {
                 _queue.RemoveAt(0);
                 continue;
             }
 
             var index = _queue.FindIndex(item =>
-                string.Equals(item.Entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
+                string.Equals(item.Entry.DeviceSerialNumber, effectiveSerial, StringComparison.OrdinalIgnoreCase));
 
             if (index < 0)
                 break;
@@ -170,6 +178,14 @@ public sealed class TurnstileLogState : IDisposable
             return true;
 
         return string.Equals(entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ShouldAcceptEntry(TurnstileLogEntry entry, string selectedDeviceSerial)
+    {
+        if (string.IsNullOrWhiteSpace(selectedDeviceSerial) || selectedDeviceSerial == AllDevicesValue)
+            return true;
+
+        return string.Equals(entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
     }
 
     private int CountForSerial(string selectedDeviceSerial)
