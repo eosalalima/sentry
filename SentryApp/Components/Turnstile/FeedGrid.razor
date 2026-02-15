@@ -58,16 +58,12 @@
         FilteredItems
             .Where(item => IsIn(item.Entry.LogType))
             .Select(item => item.Entry)
-            .OrderByDescending(item => item.TimeLogStamp)
-            .ThenByDescending(item => item.TimeLogId)
             .ToList();
 
     private List<TurnstileLogEntry> OutEntries =>
         FilteredItems
             .Where(item => IsOutOrBreakOut(item.Entry.LogType))
             .Select(item => item.Entry)
-            .OrderByDescending(item => item.TimeLogStamp)
-            .ThenByDescending(item => item.TimeLogId)
             .ToList();
 
     private IEnumerable<TurnstileQueueItem> FilteredItems =>
