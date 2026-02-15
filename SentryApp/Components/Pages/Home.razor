@@ -12,7 +12,7 @@
 
     <div class="mon-body">
         <div class="mon-left">
-            <FeedGrid Items="State.QueueSnapshot" SelectedDeviceSerial="EffectiveSelectedDeviceSerial" />
+            <LogQueue Items="FilteredQueueItems" />
         </div>
 
         <div class="mon-right">
@@ -57,6 +57,12 @@
     State.Spotlight is { } entry && ShouldDisplay(entry)
     ? entry
     : null;
+
+    private IReadOnlyList<TurnstileQueueItem> FilteredQueueItems =>
+        State.QueueSnapshot
+            .Where(item => ShouldDisplay(item.Entry))
+            .OrderByDescending(item => item.EnqueuedAt)
+            .ToList();
 
     private bool ShouldDisplay(TurnstileLogEntry entry)
     {

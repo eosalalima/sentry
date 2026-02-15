@@ -94,6 +94,76 @@
 .mon-left{ flex: 0 0 50%; }
 .mon-right{ flex: 1; display:flex; }
 
+.queue{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-height:0;
+}
+
+.queue-title{
+  font-weight:800;
+  letter-spacing:.3px;
+}
+
+.queue-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  overflow:auto;
+  padding-right:4px;
+}
+
+.queue-empty{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+  border:1px dashed rgba(0,0,0,.2);
+  border-radius:8px;
+  color:rgba(0,0,0,.6);
+  font-weight:600;
+}
+
+.queue-card{
+  background:var(--card);
+  border-radius:8px;
+  box-shadow:var(--shadow);
+  border:1px solid rgba(0,0,0,.06);
+  padding:10px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+
+.queue-photo{
+  width:78px;
+  height:78px;
+  border-radius:8px;
+  object-fit:cover;
+  background:#f1f2f4;
+}
+
+.queue-text{ min-width:0; }
+
+.queue-log-type{
+  font-size:12px;
+  font-weight:800;
+  color:var(--green2);
+}
+
+.queue-name{
+  font-weight:700;
+}
+
+.queue-access,
+.queue-meta{
+  font-size:13px;
+  opacity:.75;
+}
+
 @media (max-width: 1200px){
   .mon-body{ flex-direction:column; }
   .mon-left{ flex-basis:auto; }
