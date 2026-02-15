@@ -1,10 +1,31 @@
 @using SentryApp.Services
 
 <div class="feed-grid">
-    @foreach (var item in FilteredItems.Reverse())
-    {
-        <FeedCard Entry="item.Entry" />
-    }
+    <div class="feed-grid-section">
+        <div class="feed-grid-section-label">IN</div>
+        @if (LatestInEntry is { } inEntry)
+        {
+            <FeedCard Entry="inEntry" />
+        }
+        else
+        {
+            <div class="feed-grid-empty">No recent IN logs.</div>
+        }
+    </div>
+
+    <div class="feed-grid-divider"></div>
+
+    <div class="feed-grid-section">
+        <div class="feed-grid-section-label">OUT / BREAK OUT</div>
+        @if (LatestOutEntry is { } outEntry)
+        {
+            <FeedCard Entry="outEntry" />
+        }
+        else
+        {
+            <div class="feed-grid-empty">No recent OUT or BREAK OUT logs.</div>
+        }
+    </div>
 </div>
 
 @code {
@@ -16,6 +37,20 @@
     private IEnumerable<TurnstileQueueItem> FilteredItems =>
         Items.Where(item => ShouldDisplay(item.Entry));
 
+    private TurnstileLogEntry? LatestInEntry =>
+        FilteredItems
+            .Where(item => IsIn(item.Entry.LogType))
+            .Select(item => item.Entry)
+            .OrderByDescending(entry => entry.TimeLogStamp)
+            .FirstOrDefault();
+
+    private TurnstileLogEntry? LatestOutEntry =>
+        FilteredItems
+            .Where(item => IsOutOrBreakOut(item.Entry.LogType))
+            .Select(item => item.Entry)
+            .OrderByDescending(entry => entry.TimeLogStamp)
+            .FirstOrDefault();
+
     private bool ShouldDisplay(TurnstileLogEntry entry)
     {
         if (SelectedDeviceSerial == AllDevicesValue)
@@ -23,5 +58,23 @@
 
         return !string.IsNullOrWhiteSpace(entry.DeviceSerialNumber)
             && string.Equals(entry.DeviceSerialNumber, SelectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsIn(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return false;
+
+        return string.Equals(logType.Trim(), "IN", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsOutOrBreakOut(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return false;
+
+        var normalized = logType.Trim();
+        return string.Equals(normalized, "OUT", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(normalized, "BREAK OUT", StringComparison.OrdinalIgnoreCase);
     }
 }

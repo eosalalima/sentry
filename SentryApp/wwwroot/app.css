@@ -101,19 +101,41 @@
 
 /* LEFT GRID (4 columns like screenshot) */
 .feed-grid{
-  display:grid;
-  grid-template-columns: repeat(4, minmax(0,1fr));
-  gap:18px;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
 }
 
-@media (max-width: 1400px){
-  .feed-grid{ grid-template-columns: repeat(3, minmax(0,1fr)); }
+.feed-grid-section{
+  min-height:0;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
 }
-@media (max-width: 1000px){
-  .feed-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+
+.feed-grid-section-label{
+  font-weight:800;
+  letter-spacing:.3px;
 }
-@media (max-width: 650px){
-  .feed-grid{ grid-template-columns: 1fr; }
+
+.feed-grid-divider{
+  height:3px;
+  background:#e61919;
+  border-radius:999px;
+}
+
+.feed-grid-empty{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+  border:1px dashed rgba(0,0,0,.2);
+  border-radius:8px;
+  color:rgba(0,0,0,.6);
+  font-weight:600;
 }
 
 .feed-card{
