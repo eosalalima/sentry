@@ -115,6 +115,18 @@
   gap:10px;
 }
 
+.feed-grid-rows{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.feed-grid-row{
+  display:grid;
+  grid-template-columns:repeat(5, minmax(0, 1fr));
+  gap:10px;
+}
+
 .feed-grid-section-label{
   font-weight:800;
   letter-spacing:.3px;
@@ -165,8 +177,9 @@
 }
 
 .feed-photo{
-  width:110px;
-  height:110px;
+  width:100%;
+  max-width:110px;
+  aspect-ratio:1/1;
   border-radius:6px;
   object-fit:cover;
   background:#eee;
