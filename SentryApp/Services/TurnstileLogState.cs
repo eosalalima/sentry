@@ -221,7 +221,7 @@ public sealed class TurnstileLogState : IDisposable
         if (highlightMs < 1)
             highlightMs = 1;
 
-        return TimeSpan.FromMilliseconds(highlightMs.Value);
+        return TimeSpan.FromMilliseconds(highlightMs);
     }
 
     private bool ShouldAcceptEntry(TurnstileLogEntry entry)
