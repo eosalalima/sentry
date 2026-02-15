@@ -89,7 +89,8 @@
         if (string.IsNullOrWhiteSpace(logType))
             return false;
 
-        return string.Equals(logType.Trim(), "IN", StringComparison.OrdinalIgnoreCase);
+        var normalized = NormalizeLogType(logType);
+        return normalized.Contains("IN", StringComparison.Ordinal);
     }
 
     private static bool IsOutOrBreakOut(string? logType)
@@ -98,7 +99,8 @@
             return false;
 
         var normalized = NormalizeLogType(logType);
-        return normalized is "OUT" or "BREAKOUT";
+        return normalized.Contains("OUT", StringComparison.Ordinal)
+            || normalized.Contains("BREAK", StringComparison.Ordinal);
     }
 
     private static string NormalizeLogType(string? logType)
