@@ -14,7 +14,7 @@ public sealed class TurnstileLogState : IDisposable
     private readonly IConfiguration _configuration;
     private readonly ILogger<TurnstileLogState> _logger;
     private readonly HashSet<Guid> _queuedEntryIds = new();
-    private readonly HashSet<Guid> _scheduledEntryIds = new();
+    private readonly Dictionary<Guid, CancellationTokenSource> _scheduledTransitions = new();
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly bool _diagnosticsEnabled;
 
@@ -44,7 +44,7 @@ public sealed class TurnstileLogState : IDisposable
     {
         string selectedDeviceSerialSnapshot;
         var shouldNotify = false;
-        var shouldSchedule = false;
+        CancellationTokenSource? transitionCts = null;
 
         lock (_lock)
         {
@@ -55,15 +55,18 @@ public sealed class TurnstileLogState : IDisposable
             Spotlight = entry;
             shouldNotify = true;
 
-            if (!_queuedEntryIds.Contains(entry.TimeLogId) && !_scheduledEntryIds.Contains(entry.TimeLogId))
+            if (_scheduledTransitions.TryGetValue(entry.TimeLogId, out var existingTransition))
             {
-                _scheduledEntryIds.Add(entry.TimeLogId);
-                shouldSchedule = true;
+                existingTransition.Cancel();
+                existingTransition.Dispose();
             }
+
+            transitionCts = CancellationTokenSource.CreateLinkedTokenSource(_disposeCts.Token);
+            _scheduledTransitions[entry.TimeLogId] = transitionCts;
         }
 
-        if (shouldSchedule)
-            _ = MoveToFeedAfterDelayAsync(entry, selectedDeviceSerialSnapshot, _disposeCts.Token);
+        if (transitionCts is not null)
+            _ = MoveToFeedAfterDelayAsync(entry, selectedDeviceSerialSnapshot, transitionCts.Token);
 
         if (_diagnosticsEnabled)
             _logger.LogInformation("Turnstile flow: spotlight set for entry {EntryId}.", entry.TimeLogId);
@@ -91,7 +94,8 @@ public sealed class TurnstileLogState : IDisposable
 
         lock (_lock)
         {
-            _scheduledEntryIds.Remove(entry.TimeLogId);
+            if (_scheduledTransitions.Remove(entry.TimeLogId, out var scheduledTransition))
+                scheduledTransition.Dispose();
 
             if (!ShouldAcceptEntry(entry, selectedDeviceSerialSnapshot))
             {
@@ -121,6 +125,20 @@ public sealed class TurnstileLogState : IDisposable
                     TrimQueue();
                     enqueued = true;
                     shouldNotify = true;
+                }
+                else
+                {
+                    var index = _queue.FindIndex(item => item.Entry.TimeLogId == entry.TimeLogId);
+                    if (index >= 0)
+                    {
+                        _queue[index] = new TurnstileQueueItem
+                        {
+                            Entry = entry,
+                            EnqueuedAt = DateTimeOffset.UtcNow
+                        };
+
+                        shouldNotify = true;
+                    }
                 }
             }
         }
@@ -176,6 +194,15 @@ public sealed class TurnstileLogState : IDisposable
     public void Dispose()
     {
         _disposeCts.Cancel();
+
+        lock (_lock)
+        {
+            foreach (var transition in _scheduledTransitions.Values)
+                transition.Dispose();
+
+            _scheduledTransitions.Clear();
+        }
+
         _disposeCts.Dispose();
     }
 
