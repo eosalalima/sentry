@@ -16,6 +16,7 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
     private readonly SmsModuleSender _smsSender;
     private readonly IConfiguration _config;
     private readonly ILogger<TurnstileLogPollingWorker> _logger;
+    private readonly bool _flowDiagnosticsEnabled;
 
     private int _intervalMs;
     private int _lookbackSecondsOnStart;
@@ -46,6 +47,7 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         _smsSender = smsSender;
         _config = config;
         _logger = logger;
+        _flowDiagnosticsEnabled = _config.GetValue("TurnstilePolling:FlowDiagnosticsEnabled", false);
 
         _intervalMs = config.GetValue("TurnstilePolling:IntervalsMs", config.GetValue("TurnstilePolling:IntervalMs", 500));
         _lookbackSecondsOnStart = config.GetValue("TurnstilePolling:LookbackSecondsOntart", config.GetValue("TurnstilePolling:LookbackSecondsOnStart", 3));
@@ -166,7 +168,12 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
         foreach (var row in rows)
         {
             if (_seen.ContainsKey(row.TimeLogId))
+            {
+                if (_flowDiagnosticsEnabled)
+                    _logger.LogInformation("Turnstile flow: duplicate row {EntryId} ignored in poll cycle.", row.TimeLogId);
+
                 continue;
+            }
 
             _seen[row.TimeLogId] = DateTimeOffset.UtcNow;
 
@@ -191,6 +198,9 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 EventAddress = row.EventAddress,
                 SmsStatusMessage = smsStatusMessage
             };
+
+            if (_flowDiagnosticsEnabled)
+                _logger.LogInformation("Turnstile flow: new entry {EntryId} detected and pushed to spotlight.", entry.TimeLogId);
 
             _state.Push(entry);
         }
