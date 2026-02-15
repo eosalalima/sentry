@@ -3,9 +3,19 @@
 <div class="feed-grid">
     <div class="feed-grid-section">
         <div class="feed-grid-section-label">IN</div>
-        @if (LatestInEntry is { } inEntry)
+        @if (InEntries.Count > 0)
         {
-            <FeedCard Entry="inEntry" />
+            <div class="feed-grid-rows">
+                @foreach (var row in Chunk(InEntries, 5))
+                {
+                    <div class="feed-grid-row">
+                        @foreach (var entry in row)
+                        {
+                            <FeedCard Entry="entry" />
+                        }
+                    </div>
+                }
+            </div>
         }
         else
         {
@@ -17,9 +27,19 @@
 
     <div class="feed-grid-section">
         <div class="feed-grid-section-label">OUT / BREAK OUT</div>
-        @if (LatestOutEntry is { } outEntry)
+        @if (OutEntries.Count > 0)
         {
-            <FeedCard Entry="outEntry" />
+            <div class="feed-grid-rows">
+                @foreach (var row in Chunk(OutEntries, 5))
+                {
+                    <div class="feed-grid-row">
+                        @foreach (var entry in row)
+                        {
+                            <FeedCard Entry="entry" />
+                        }
+                    </div>
+                }
+            </div>
         }
         else
         {
@@ -34,22 +54,28 @@
     [Parameter] public IReadOnlyList<TurnstileQueueItem> Items { get; set; } = Array.Empty<TurnstileQueueItem>();
     [Parameter] public string SelectedDeviceSerial { get; set; } = AllDevicesValue;
 
-    private IEnumerable<TurnstileQueueItem> FilteredItems =>
-        Items.Where(item => ShouldDisplay(item.Entry));
-
-    private TurnstileLogEntry? LatestInEntry =>
+    private List<TurnstileLogEntry> InEntries =>
         FilteredItems
             .Where(item => IsIn(item.Entry.LogType))
             .Select(item => item.Entry)
-            .OrderByDescending(entry => entry.TimeLogStamp)
-            .FirstOrDefault();
+            .OrderBy(item => item.TimeLogStamp)
+            .ToList();
 
-    private TurnstileLogEntry? LatestOutEntry =>
+    private List<TurnstileLogEntry> OutEntries =>
         FilteredItems
             .Where(item => IsOutOrBreakOut(item.Entry.LogType))
             .Select(item => item.Entry)
-            .OrderByDescending(entry => entry.TimeLogStamp)
-            .FirstOrDefault();
+            .OrderBy(item => item.TimeLogStamp)
+            .ToList();
+
+    private IEnumerable<TurnstileQueueItem> FilteredItems =>
+        Items.Where(item => ShouldDisplay(item.Entry));
+
+    private static IEnumerable<List<TurnstileLogEntry>> Chunk(List<TurnstileLogEntry> entries, int size)
+    {
+        for (var i = 0; i < entries.Count; i += size)
+            yield return entries.Skip(i).Take(size).ToList();
+    }
 
     private bool ShouldDisplay(TurnstileLogEntry entry)
     {

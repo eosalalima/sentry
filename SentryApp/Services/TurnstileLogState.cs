@@ -5,15 +5,13 @@ namespace SentryApp.Services;
 public sealed class TurnstileLogState : IDisposable
 {
     private const string AllDevicesValue = "1";
-    private const int MaxQueueItems = 12;
-    private static readonly TimeSpan QueueRetention = TimeSpan.FromSeconds(10);
+    private const int MaxEntriesPerLogType = 10;
     private readonly int _defaultHighlightDisplayDurationMs;
 
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
     private readonly IConfiguration _configuration;
     private readonly HashSet<Guid> _pendingQueueEntries = new();
-    private readonly HashSet<Guid> _pendingQueueRemovals = new();
     private readonly CancellationTokenSource _disposeCts = new();
     private string _selectedDeviceSerial = AllDevicesValue;
 
@@ -98,65 +96,17 @@ public sealed class TurnstileLogState : IDisposable
             if (Spotlight?.TimeLogId == entry.TimeLogId)
                 Spotlight = null;
 
-            TrimQueue(selectedDeviceSerialSnapshot);
+            TrimQueue();
             _pendingQueueEntries.Remove(entry.TimeLogId);
-
-            if (_pendingQueueRemovals.Add(entry.TimeLogId))
-                _ = RemoveEntryFromQueueAfterDelayAsync(entry.TimeLogId, selectedDeviceSerialSnapshot, _disposeCts.Token);
         }
 
         Changed?.Invoke();
     }
 
-    private async Task RemoveEntryFromQueueAfterDelayAsync(
-        Guid entryId,
-        string selectedDeviceSerialSnapshot,
-        CancellationToken ct)
+    private void TrimQueue()
     {
-        try
-        {
-            await Task.Delay(QueueRetention, ct);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-
-        lock (_lock)
-        {
-            var index = _queue.FindIndex(item => item.Entry.TimeLogId == entryId);
-            if (index >= 0)
-                _queue.RemoveAt(index);
-
-            _pendingQueueRemovals.Remove(entryId);
-            TrimQueue(selectedDeviceSerialSnapshot);
-        }
-
-        Changed?.Invoke();
-    }
-
-    private void TrimQueue(string? selectedDeviceSerial = null)
-    {
-        var effectiveSerial = string.IsNullOrWhiteSpace(selectedDeviceSerial)
-            ? _selectedDeviceSerial
-            : selectedDeviceSerial;
-
-        while (CountForSerial(effectiveSerial) > MaxQueueItems)
-        {
-            if (effectiveSerial == AllDevicesValue)
-            {
-                RemoveQueueItemAt(0);
-                continue;
-            }
-
-            var index = _queue.FindIndex(item =>
-                string.Equals(item.Entry.DeviceSerialNumber, effectiveSerial, StringComparison.OrdinalIgnoreCase));
-
-            if (index < 0)
-                break;
-
-            RemoveQueueItemAt(index);
-        }
+        TrimQueueForType(IsInLogType);
+        TrimQueueForType(IsOutOrBreakOutLogType);
     }
 
     public void Dispose()
@@ -186,7 +136,7 @@ public sealed class TurnstileLogState : IDisposable
                 _queue.RemoveAll(item => !ShouldAcceptEntry(item.Entry));
 
                 foreach (var entryId in removedItems)
-                    _pendingQueueRemovals.Remove(entryId);
+                    _pendingQueueEntries.Remove(entryId);
 
                 if (Spotlight is not null && !ShouldAcceptEntry(Spotlight))
                     Spotlight = null;
@@ -221,19 +171,28 @@ public sealed class TurnstileLogState : IDisposable
         return string.Equals(entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
     }
 
-    private int CountForSerial(string selectedDeviceSerial)
+    private void TrimQueueForType(Func<TurnstileLogEntry, bool> typePredicate)
     {
-        if (selectedDeviceSerial == AllDevicesValue)
-            return _queue.Count;
+        while (CountForType(typePredicate) > MaxEntriesPerLogType)
+        {
+            var index = _queue.FindIndex(item => typePredicate(item.Entry));
+            if (index < 0)
+                break;
 
-        return _queue.Count(item =>
-            string.Equals(item.Entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
+            _queue.RemoveAt(index);
+        }
     }
 
-    private void RemoveQueueItemAt(int index)
+    private int CountForType(Func<TurnstileLogEntry, bool> typePredicate)
+        => _queue.Count(item => typePredicate(item.Entry));
+
+    private static bool IsInLogType(TurnstileLogEntry entry)
+        => string.Equals(entry.LogType?.Trim(), "IN", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsOutOrBreakOutLogType(TurnstileLogEntry entry)
     {
-        var entryId = _queue[index].Entry.TimeLogId;
-        _queue.RemoveAt(index);
-        _pendingQueueRemovals.Remove(entryId);
+        var normalized = entry.LogType?.Trim();
+        return string.Equals(normalized, "OUT", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(normalized, "BREAK OUT", StringComparison.OrdinalIgnoreCase);
     }
 }
