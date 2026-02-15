@@ -284,12 +284,16 @@ public sealed class TurnstileLogState : IDisposable
         => _queue.Count(item => typePredicate(item.Entry));
 
     private static bool IsInLogType(TurnstileLogEntry entry)
-        => string.Equals(entry.LogType?.Trim(), "IN", StringComparison.OrdinalIgnoreCase);
+    {
+        var normalized = NormalizeLogType(entry.LogType);
+        return normalized.Contains("IN", StringComparison.Ordinal);
+    }
 
     private static bool IsOutOrBreakOutLogType(TurnstileLogEntry entry)
     {
         var normalized = NormalizeLogType(entry.LogType);
-        return normalized is "OUT" or "BREAKOUT";
+        return normalized.Contains("OUT", StringComparison.Ordinal)
+            || normalized.Contains("BREAK", StringComparison.Ordinal);
     }
 
     private static string NormalizeLogType(string? logType)
