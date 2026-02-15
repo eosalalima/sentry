@@ -42,7 +42,7 @@
     private readonly System.Timers.Timer _clock = new(1000);
     private string _clockText = DateTime.Now.ToString("HH:mm:ss");
 
-    private bool IsOut => string.Equals(Entry?.LogType, "OUT", StringComparison.OrdinalIgnoreCase);
+    private bool IsOut => TurnstileLogTypeClassifier.IsOutFamily(Entry?.LogType);
     private TurnstileLogEntry? VisibleEntry => Entry;
 
     protected override void OnInitialized()

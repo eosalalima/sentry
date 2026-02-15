@@ -26,7 +26,7 @@
     <div class="feed-grid-divider"></div>
 
     <div class="feed-grid-section">
-        <div class="feed-grid-section-label">OUT / BREAK OUT</div>
+        <div class="feed-grid-section-label">OUT / BREAKOUT</div>
         @if (OutEntries.Count > 0)
         {
             <div class="feed-grid-rows">
@@ -43,7 +43,7 @@
         }
         else
         {
-            <div class="feed-grid-empty">No recent OUT or BREAK OUT logs.</div>
+            <div class="feed-grid-empty">No recent OUT or BREAKOUT logs.</div>
         }
     </div>
 </div>
@@ -56,16 +56,16 @@
 
     private List<TurnstileLogEntry> InEntries =>
         FilteredItems
-            .Where(item => IsIn(item.Entry.LogType))
+             .Where(item => TurnstileLogTypeClassifier.IsIn(item.Entry.LogType))
+            .OrderByDescending(item => item.EnqueuedAt)
             .Select(item => item.Entry)
-            .OrderBy(item => item.TimeLogStamp)
             .ToList();
 
     private List<TurnstileLogEntry> OutEntries =>
         FilteredItems
-            .Where(item => IsOutOrBreakOut(item.Entry.LogType))
+             .Where(item => TurnstileLogTypeClassifier.IsOutFamily(item.Entry.LogType))
+            .OrderByDescending(item => item.EnqueuedAt)
             .Select(item => item.Entry)
-            .OrderBy(item => item.TimeLogStamp)
             .ToList();
 
     private IEnumerable<TurnstileQueueItem> FilteredItems =>
@@ -84,23 +84,5 @@
 
         return !string.IsNullOrWhiteSpace(entry.DeviceSerialNumber)
             && string.Equals(entry.DeviceSerialNumber, SelectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsIn(string? logType)
-    {
-        if (string.IsNullOrWhiteSpace(logType))
-            return false;
-
-        return string.Equals(logType.Trim(), "IN", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsOutOrBreakOut(string? logType)
-    {
-        if (string.IsNullOrWhiteSpace(logType))
-            return false;
-
-        var normalized = logType.Trim();
-        return string.Equals(normalized, "OUT", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(normalized, "BREAK OUT", StringComparison.OrdinalIgnoreCase);
     }
 }

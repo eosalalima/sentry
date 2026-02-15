@@ -11,7 +11,7 @@ public sealed class TurnstileLogState : IDisposable
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
     private readonly IConfiguration _configuration;
-    private readonly HashSet<Guid> _pendingQueueEntries = new();
+    private readonly HashSet<string> _pendingQueueEntries = new();
     private readonly CancellationTokenSource _disposeCts = new();
     private string _selectedDeviceSerial = AllDevicesValue;
 
@@ -46,8 +46,10 @@ public sealed class TurnstileLogState : IDisposable
             selectedDeviceSerialSnapshot = _selectedDeviceSerial;
             Spotlight = entry;
 
-            if (_pendingQueueEntries.Add(entry.TimeLogId))
-                _ = MoveEntryToQueueAfterDelayAsync(entry, selectedDeviceSerialSnapshot, _disposeCts.Token);
+            var entryKey = GetEntryKey(entry);
+
+            if (_pendingQueueEntries.Add(entryKey))
+                _ = MoveEntryToQueueAfterDelayAsync(entry, entryKey, selectedDeviceSerialSnapshot, _disposeCts.Token);
         }
 
         Changed?.Invoke();
@@ -55,6 +57,7 @@ public sealed class TurnstileLogState : IDisposable
 
     private async Task MoveEntryToQueueAfterDelayAsync(
         TurnstileLogEntry entry,
+        string entryKey,
         string selectedDeviceSerialSnapshot,
         CancellationToken ct)
     {
@@ -75,13 +78,13 @@ public sealed class TurnstileLogState : IDisposable
                 if (Spotlight?.TimeLogId == entry.TimeLogId)
                     Spotlight = null;
 
-                _pendingQueueEntries.Remove(entry.TimeLogId);
+                _pendingQueueEntries.Remove(entryKey);
                 return;
             }
 
-            if (_queue.Any(item => item.Entry.TimeLogId == entry.TimeLogId))
+            if (_queue.Any(item => GetEntryKey(item.Entry) == entryKey))
             {
-                _pendingQueueEntries.Remove(entry.TimeLogId);
+                _pendingQueueEntries.Remove(entryKey);
                 return;
             }
 
@@ -97,7 +100,7 @@ public sealed class TurnstileLogState : IDisposable
                 Spotlight = null;
 
             TrimQueue();
-            _pendingQueueEntries.Remove(entry.TimeLogId);
+            _pendingQueueEntries.Remove(entryKey);
         }
 
         Changed?.Invoke();
@@ -130,7 +133,7 @@ public sealed class TurnstileLogState : IDisposable
             {
                 var removedItems = _queue
                     .Where(item => !ShouldAcceptEntry(item.Entry))
-                    .Select(item => item.Entry.TimeLogId)
+                                        .Select(item => GetEntryKey(item.Entry))
                     .ToList();
 
                 _queue.RemoveAll(item => !ShouldAcceptEntry(item.Entry));
@@ -187,12 +190,19 @@ public sealed class TurnstileLogState : IDisposable
         => _queue.Count(item => typePredicate(item.Entry));
 
     private static bool IsInLogType(TurnstileLogEntry entry)
-        => string.Equals(entry.LogType?.Trim(), "IN", StringComparison.OrdinalIgnoreCase);
+        => TurnstileLogTypeClassifier.IsIn(entry.LogType);
 
     private static bool IsOutOrBreakOutLogType(TurnstileLogEntry entry)
+        => TurnstileLogTypeClassifier.IsOutFamily(entry.LogType);
+
+    private static string GetEntryKey(TurnstileLogEntry entry)
     {
-        var normalized = entry.LogType?.Trim();
-        return string.Equals(normalized, "OUT", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(normalized, "BREAK OUT", StringComparison.OrdinalIgnoreCase);
+        if (entry.TimeLogId != Guid.Empty)
+            return entry.TimeLogId.ToString("N");
+
+        var access = entry.AccessNumber ?? string.Empty;
+        var serial = entry.DeviceSerialNumber ?? string.Empty;
+        var logType = entry.LogType ?? string.Empty;
+        return $"{entry.TimeLogStamp.UtcTicks}|{access}|{serial}|{logType}";
     }
 }

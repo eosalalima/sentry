@@ -20,5 +20,5 @@
 
 @code {
     [Parameter, EditorRequired] public TurnstileLogEntry Entry { get; set; } = new();
-    private bool IsOut => string.Equals(Entry.LogType, "OUT", StringComparison.OrdinalIgnoreCase);
+    private bool IsOut => TurnstileLogTypeClassifier.IsOutFamily(Entry.LogType);
 }
