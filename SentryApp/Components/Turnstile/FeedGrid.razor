@@ -26,7 +26,7 @@
     <div class="feed-grid-divider"></div>
 
     <div class="feed-grid-section">
-        <div class="feed-grid-section-label">OUT / BREAK OUT</div>
+        <div class="feed-grid-section-label">OUT / BREAKOUT</div>
         @if (OutEntries.Count > 0)
         {
             <div class="feed-grid-rows">
@@ -43,7 +43,7 @@
         }
         else
         {
-            <div class="feed-grid-empty">No recent OUT or BREAK OUT logs.</div>
+            <div class="feed-grid-empty">No recent OUT or BREAKOUT logs.</div>
         }
     </div>
 </div>
@@ -99,8 +99,18 @@
         if (string.IsNullOrWhiteSpace(logType))
             return false;
 
-        var normalized = logType.Trim();
-        return string.Equals(normalized, "OUT", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(normalized, "BREAK OUT", StringComparison.OrdinalIgnoreCase);
+        var normalized = NormalizeLogType(logType);
+        return normalized is "OUT" or "BREAKOUT";
+    }
+
+    private static string NormalizeLogType(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return string.Empty;
+
+        return logType
+            .Trim()
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToUpperInvariant();
     }
 }

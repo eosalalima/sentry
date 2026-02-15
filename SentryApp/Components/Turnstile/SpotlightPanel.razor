@@ -42,8 +42,19 @@
     private readonly System.Timers.Timer _clock = new(1000);
     private string _clockText = DateTime.Now.ToString("HH:mm:ss");
 
-    private bool IsOut => string.Equals(Entry?.LogType, "OUT", StringComparison.OrdinalIgnoreCase);
+    private bool IsOut => NormalizeLogType(Entry?.LogType) is "OUT" or "BREAKOUT";
     private TurnstileLogEntry? VisibleEntry => Entry;
+
+    private static string NormalizeLogType(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return string.Empty;
+
+        return logType
+            .Trim()
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToUpperInvariant();
+    }
 
     protected override void OnInitialized()
     {

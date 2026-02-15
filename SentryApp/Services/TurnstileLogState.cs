@@ -191,8 +191,18 @@ public sealed class TurnstileLogState : IDisposable
 
     private static bool IsOutOrBreakOutLogType(TurnstileLogEntry entry)
     {
-        var normalized = entry.LogType?.Trim();
-        return string.Equals(normalized, "OUT", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(normalized, "BREAK OUT", StringComparison.OrdinalIgnoreCase);
+        var normalized = NormalizeLogType(entry.LogType);
+        return normalized is "OUT" or "BREAKOUT";
+    }
+
+    private static string NormalizeLogType(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return string.Empty;
+
+        return logType
+            .Trim()
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToUpperInvariant();
     }
 }
