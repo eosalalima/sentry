@@ -46,14 +46,25 @@ public sealed class TurnstileLogState : IDisposable
             selectedDeviceSerialSnapshot = _selectedDeviceSerial;
             Spotlight = entry;
 
+            if (!_queue.Any(item => item.Entry.TimeLogId == entry.TimeLogId))
+            {
+                _queue.Add(new TurnstileQueueItem
+                {
+                    Entry = entry,
+                    EnqueuedAt = DateTimeOffset.UtcNow
+                });
+
+                TrimQueue();
+            }
+
             if (_pendingQueueEntries.Add(entry.TimeLogId))
-                _ = MoveEntryToQueueAfterDelayAsync(entry, selectedDeviceSerialSnapshot, _disposeCts.Token);
+                _ = ClearSpotlightAfterDelayAsync(entry, selectedDeviceSerialSnapshot, _disposeCts.Token);
         }
 
         Changed?.Invoke();
     }
 
-    private async Task MoveEntryToQueueAfterDelayAsync(
+    private async Task ClearSpotlightAfterDelayAsync(
         TurnstileLogEntry entry,
         string selectedDeviceSerialSnapshot,
         CancellationToken ct)
@@ -79,24 +90,9 @@ public sealed class TurnstileLogState : IDisposable
                 return;
             }
 
-            if (_queue.Any(item => item.Entry.TimeLogId == entry.TimeLogId))
-            {
-                _pendingQueueEntries.Remove(entry.TimeLogId);
-                return;
-            }
-
-            var queueItem = new TurnstileQueueItem
-            {
-                Entry = entry,
-                EnqueuedAt = DateTimeOffset.UtcNow
-            };
-
-            _queue.Add(queueItem);
-
             if (Spotlight?.TimeLogId == entry.TimeLogId)
                 Spotlight = null;
 
-            TrimQueue();
             _pendingQueueEntries.Remove(entry.TimeLogId);
         }
 
