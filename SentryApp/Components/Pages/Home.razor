@@ -61,7 +61,6 @@
     private IReadOnlyList<TurnstileQueueItem> FilteredQueueItems =>
         State.QueueSnapshot
             .Where(item => ShouldDisplay(item.Entry))
-            .OrderByDescending(item => item.EnqueuedAt)
             .ToList();
 
     private bool ShouldDisplay(TurnstileLogEntry entry)
