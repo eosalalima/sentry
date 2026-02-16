@@ -56,6 +56,16 @@
         }
     </div>
 
+    <div class="mb-3">
+        <label class="form-label" for="logTypeSelect">Log Type</label>
+        <select id="logTypeSelect" class="form-select" @bind="_selectedLogType" disabled="@_isBusy">
+            @foreach (var logType in LogTypes)
+            {
+                <option value="@logType">@logType</option>
+            }
+        </select>
+    </div>
+
     <p>
         <button class="btn btn-primary" @onclick="AddEntryLogAsync"
                 disabled="@(_isBusy || string.IsNullOrWhiteSpace(_selectedDeviceSerial) || string.IsNullOrWhiteSpace(_selectedPersonnelId))">
@@ -193,7 +203,6 @@
 
 @code {
     private static readonly string[] LogTypes = ["IN", "OUT", "BREAK OUT"];
-    private readonly Random _random = new();
     private List<DeviceOption> _devices = new();
     private List<DeviceLogListItem> _deviceLogs = new();
     private List<PersonnelOption> _personnelUnion = new();
@@ -204,6 +213,7 @@
     private string? _errorMessage;
     private string? _selectedPersonnelId;
     private string? _selectedDeviceSerial;
+    private string _selectedLogType = LogTypes[0];
     private string? _smsConfigError;
     private string? _smsConfigStatus;
     private string? _statusMessage;
@@ -248,7 +258,7 @@
 
             var now = DateTimeOffset.Now;
             var recordDate = DateTime.Now.Date;
-            var logType = LogTypes[_random.Next(LogTypes.Length)];
+            var logType = _selectedLogType;
             var logId = Guid.NewGuid();
             var accessNumber = selectedPersonnel.Field15;
             if (string.IsNullOrWhiteSpace(accessNumber))
