@@ -165,18 +165,20 @@
   border:1px solid rgba(0,0,0,.06);
   padding:8px;
   display:flex;
-  gap:8px;
-  align-items:flex-start;
-  min-height:120px;
+  flex-direction:column;
+  gap:10px;
+  align-items:stretch;
+  min-height:180px;
 }
 
 .queue-photo{
-  width:52px;
-  height:64px;
+  width:78px;
+  height:98px;
   border-radius:6px;
   object-fit:cover;
   background:#f1f2f4;
   flex-shrink:0;
+  align-self:center;
 }
 
 .queue-text{ min-width:0; }
