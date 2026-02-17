@@ -1,7 +1,12 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{53EB6E8D-6FB7-49B7-8E8F-17F5DC191101}|MySentyAppInstaller\\MySentyAppInstaller.wixproj|f:\\projects\\dr. gloria d lacson school\\application\\sentry\\mysentyappinstaller\\package.wxs||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{53EB6E8D-6FB7-49B7-8E8F-17F5DC191101}|MySentyAppInstaller\\MySentyAppInstaller.wixproj|solutionrelative:mysentyappinstaller\\package.wxs||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -9,11 +14,24 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": -1,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Package.wxs",
+              "DocumentMoniker": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\MySentyAppInstaller\\Package.wxs",
+              "RelativeDocumentMoniker": "MySentyAppInstaller\\Package.wxs",
+              "ToolTip": "F:\\Projects\\Dr. Gloria D Lacson School\\Application\\sentry\\MySentyAppInstaller\\Package.wxs",
+              "RelativeToolTip": "MySentyAppInstaller\\Package.wxs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "71fa8cad-8471-402b-834a-c68922df4385.000080|",
+              "WhenOpened": "2026-02-16T07:09:24.404Z",
+              "EditorCaption": ""
             }
           ]
         }
