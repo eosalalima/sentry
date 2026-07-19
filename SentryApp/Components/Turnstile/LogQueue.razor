@@ -1,21 +1,106 @@
 @using SentryApp.Services
 
 <div class="queue">
-    <div class="queue-title">Recent Queue</div>
+    <div class="queue-title">Recent Logs</div>
 
-    @if (Items is null || Items.Count == 0)
-    {
-        <div class="queue-empty">No recent entries.</div>
-    }
-    else
-    {
-        @foreach (var item in Items)
-        {
-            <LogQueueItemCard Entry="item.Entry" />
-        }
-    }
+    <div class="queue-sections">
+        <div class="queue-section">
+            <div class="queue-section-label">IN</div>
+            @if (InEntries.Count > 0)
+            {
+                <div class="queue-grid-rows">
+                    @foreach (var row in Chunk(InEntries, 5))
+                    {
+                        <div class="queue-grid-row">
+                            @foreach (var entry in row)
+                            {
+                                <LogQueueItemCard Entry="entry" />
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="queue-empty">No recent IN logs.</div>
+            }
+        </div>
+
+        <div class="queue-divider"></div>
+
+        <div class="queue-section">
+            <div class="queue-section-label">OUT / BREAK OUT</div>
+            @if (OutEntries.Count > 0)
+            {
+                <div class="queue-grid-rows">
+                    @foreach (var row in Chunk(OutEntries, 5))
+                    {
+                        <div class="queue-grid-row">
+                            @foreach (var entry in row)
+                            {
+                                <LogQueueItemCard Entry="entry" />
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="queue-empty">No recent OUT/BREAK OUT logs.</div>
+            }
+        </div>
+    </div>
 </div>
 
 @code {
     [Parameter] public IReadOnlyList<TurnstileQueueItem> Items { get; set; } = Array.Empty<TurnstileQueueItem>();
+
+    private List<TurnstileLogEntry> InEntries =>
+        Items
+            .Where(item => IsIn(item.Entry.LogType))
+            .Select(item => item.Entry)
+            .Take(10)
+            .ToList();
+
+    private List<TurnstileLogEntry> OutEntries =>
+        Items
+            .Where(item => IsOutOrBreakOut(item.Entry.LogType))
+            .Select(item => item.Entry)
+            .Take(10)
+            .ToList();
+
+    private static IEnumerable<List<TurnstileLogEntry>> Chunk(List<TurnstileLogEntry> entries, int size)
+    {
+        for (var i = 0; i < entries.Count; i += size)
+            yield return entries.Skip(i).Take(size).ToList();
+    }
+
+    private static bool IsIn(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return false;
+
+        return NormalizeLogType(logType).Contains("IN", StringComparison.Ordinal);
+    }
+
+    private static bool IsOutOrBreakOut(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return false;
+
+        var normalized = NormalizeLogType(logType);
+        return normalized.Contains("OUT", StringComparison.Ordinal)
+            || normalized.Contains("BREAK", StringComparison.Ordinal);
+    }
+
+    private static string NormalizeLogType(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return string.Empty;
+
+        return logType
+            .Trim()
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToUpperInvariant();
+    }
 }

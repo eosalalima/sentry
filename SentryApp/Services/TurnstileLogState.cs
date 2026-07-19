@@ -1,17 +1,24 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace SentryApp.Services;
 
 public sealed class TurnstileLogState : IDisposable
 {
-    private const int MaxQueueItems = 12;
-    private const int DefaultHighlightDisplayDurationMs = 3000;
     private const string AllDevicesValue = "1";
+    private const int MaxEntriesPerLogType = 10;
+    private static readonly TimeSpan FeedItemTtl = TimeSpan.FromSeconds(10);
 
     private readonly object _lock = new();
     private readonly List<TurnstileQueueItem> _queue = new();
     private readonly IConfiguration _configuration;
-    private CancellationTokenSource? _spotlightCts;
+    private readonly ILogger<TurnstileLogState> _logger;
+    private readonly HashSet<Guid> _queuedEntryIds = new();
+    private readonly Dictionary<Guid, CancellationTokenSource> _scheduledTransitions = new();
+    private readonly CancellationTokenSource _disposeCts = new();
+    private readonly bool _diagnosticsEnabled;
+
+    private string _selectedDeviceSerial = AllDevicesValue;
 
     public event Action? Changed;
 
@@ -26,114 +33,277 @@ public sealed class TurnstileLogState : IDisposable
         }
     }
 
-    public TurnstileLogState(IConfiguration configuration)
+    public TurnstileLogState(IConfiguration configuration, ILogger<TurnstileLogState> logger)
     {
         _configuration = configuration;
+        _logger = logger;
+        _diagnosticsEnabled = _configuration.GetValue("TurnstilePolling:FlowDiagnosticsEnabled", false);
     }
 
     public void Push(TurnstileLogEntry entry)
     {
+        string selectedDeviceSerialSnapshot;
+        var shouldNotify = false;
+        CancellationTokenSource? transitionCts = null;
+
         lock (_lock)
         {
-            // cancel previous delayed move
-            _spotlightCts?.Cancel();
-            _spotlightCts?.Dispose();
-            _spotlightCts = new CancellationTokenSource();
+            if (!ShouldAcceptEntry(entry))
+                return;
 
-            if (Spotlight is not null)
-                AddToQueue(Spotlight);
-
+            selectedDeviceSerialSnapshot = _selectedDeviceSerial;
             Spotlight = entry;
+            shouldNotify = true;
 
-            _ = ClearSpotlightAfterDelayAsync(entry, _spotlightCts.Token);
+            if (_scheduledTransitions.TryGetValue(entry.TimeLogId, out var existingTransition))
+            {
+                existingTransition.Cancel();
+                existingTransition.Dispose();
+            }
+
+            transitionCts = CancellationTokenSource.CreateLinkedTokenSource(_disposeCts.Token);
+            _scheduledTransitions[entry.TimeLogId] = transitionCts;
         }
 
-        Changed?.Invoke();
+        if (transitionCts is not null)
+            _ = MoveToFeedAfterDelayAsync(entry, selectedDeviceSerialSnapshot, transitionCts.Token);
+
+        if (_diagnosticsEnabled)
+            _logger.LogInformation("Turnstile flow: spotlight set for entry {EntryId}.", entry.TimeLogId);
+
+        if (shouldNotify)
+            Changed?.Invoke();
     }
 
-    private async Task ClearSpotlightAfterDelayAsync(TurnstileLogEntry entry, CancellationToken ct)
+    private async Task MoveToFeedAfterDelayAsync(
+        TurnstileLogEntry entry,
+        string selectedDeviceSerialSnapshot,
+        CancellationToken ct)
     {
         try
         {
-            var delay = GetHighlightDisplayDuration();
-            await Task.Delay(delay, ct);
+            await Task.Delay(GetHighlightDisplayDuration(), ct);
         }
         catch (OperationCanceledException)
         {
             return;
         }
 
+        var shouldNotify = false;
+        var enqueued = false;
+
         lock (_lock)
         {
-            if (!ReferenceEquals(Spotlight, entry))
+            if (_scheduledTransitions.Remove(entry.TimeLogId, out var scheduledTransition))
+                scheduledTransition.Dispose();
+
+            if (!ShouldAcceptEntry(entry, selectedDeviceSerialSnapshot))
+            {
+                if (Spotlight?.TimeLogId == entry.TimeLogId)
+                {
+                    Spotlight = null;
+                    shouldNotify = true;
+                }
+            }
+            else
+            {
+                if (Spotlight?.TimeLogId == entry.TimeLogId)
+                {
+                    Spotlight = null;
+                    shouldNotify = true;
+                }
+
+                if (!_queuedEntryIds.Contains(entry.TimeLogId))
+                {
+                    _queue.Add(new TurnstileQueueItem
+                    {
+                        Entry = entry,
+                        EnqueuedAt = DateTimeOffset.UtcNow
+                    });
+
+                    _queuedEntryIds.Add(entry.TimeLogId);
+                    TrimQueue();
+                    enqueued = true;
+                    shouldNotify = true;
+                }
+                else
+                {
+                    var index = _queue.FindIndex(item => item.Entry.TimeLogId == entry.TimeLogId);
+                    if (index >= 0)
+                    {
+                        _queue[index] = new TurnstileQueueItem
+                        {
+                            Entry = entry,
+                            EnqueuedAt = DateTimeOffset.UtcNow
+                        };
+
+                        shouldNotify = true;
+                    }
+                }
+            }
+        }
+
+        if (enqueued)
+            _ = ExpireFeedItemAsync(entry.TimeLogId, ct);
+
+        if (_diagnosticsEnabled)
+            _logger.LogInformation("Turnstile flow: entry {EntryId} moved to feed queue.", entry.TimeLogId);
+
+        if (shouldNotify)
+            Changed?.Invoke();
+    }
+
+    private async Task ExpireFeedItemAsync(Guid entryId, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(FeedItemTtl, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        var removed = false;
+
+        lock (_lock)
+        {
+            var removedCount = _queue.RemoveAll(item => item.Entry.TimeLogId == entryId);
+            if (removedCount > 0)
+            {
+                _queuedEntryIds.Remove(entryId);
+                removed = true;
+            }
+        }
+
+        if (!removed)
+            return;
+
+        if (_diagnosticsEnabled)
+            _logger.LogInformation("Turnstile flow: entry {EntryId} expired from feed queue.", entryId);
+
+        Changed?.Invoke();
+    }
+
+    private void TrimQueue()
+    {
+        TrimQueueForType(IsInLogType);
+        TrimQueueForType(IsOutOrBreakOutLogType);
+    }
+
+    public void Dispose()
+    {
+        _disposeCts.Cancel();
+
+        lock (_lock)
+        {
+            foreach (var transition in _scheduledTransitions.Values)
+                transition.Dispose();
+
+            _scheduledTransitions.Clear();
+        }
+
+        _disposeCts.Dispose();
+    }
+
+    public void UpdateSelectedDeviceSerial(string? selectedDeviceSerial)
+    {
+        var normalized = string.IsNullOrWhiteSpace(selectedDeviceSerial) ? AllDevicesValue : selectedDeviceSerial;
+
+        lock (_lock)
+        {
+            if (string.Equals(_selectedDeviceSerial, normalized, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            Spotlight = null;
-            AddToQueue(entry);
+            _selectedDeviceSerial = normalized;
+
+            if (_selectedDeviceSerial != AllDevicesValue)
+            {
+                var removedItems = _queue
+                    .Where(item => !ShouldAcceptEntry(item.Entry))
+                    .Select(item => item.Entry.TimeLogId)
+                    .ToList();
+
+                _queue.RemoveAll(item => !ShouldAcceptEntry(item.Entry));
+
+                foreach (var entryId in removedItems)
+                    _queuedEntryIds.Remove(entryId);
+
+                if (Spotlight is not null && !ShouldAcceptEntry(Spotlight))
+                    Spotlight = null;
+            }
         }
 
         Changed?.Invoke();
     }
 
-    private void AddToQueue(TurnstileLogEntry entry)
-    {
-        _queue.Add(new TurnstileQueueItem
-        {
-            Entry = entry
-        });
-
-        TrimQueue();
-    }
-
-    private void TrimQueue()
-    {
-        var selectedDeviceSerial = GetSelectedDeviceSerial();
-
-        while (CountForSerial(selectedDeviceSerial) > MaxQueueItems)
-        {
-            if (selectedDeviceSerial == AllDevicesValue)
-            {
-                _queue.RemoveAt(0);
-                continue;
-            }
-
-            var index = _queue.FindIndex(item =>
-                string.Equals(item.Entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
-
-            if (index < 0)
-                break;
-
-            _queue.RemoveAt(index);
-        }
-    }
-
-    public void Dispose()
-    {
-        _spotlightCts?.Cancel();
-        _spotlightCts?.Dispose();
-    }
-
     private TimeSpan GetHighlightDisplayDuration()
     {
-        var highlightMs = _configuration.GetValue("TurnstilePolling:HighlightDisplayDuration", DefaultHighlightDisplayDurationMs);
+        var highlightMs = _configuration.GetValue<int?>("TurnstilePolling:HighlightDisplayDuration")
+            ?? _configuration.GetValue<int?>("TurnstilePolling:HighlightDispayDuration")
+            ?? _configuration.GetValue<int?>("HighlightDispayDuration")
+            ?? _configuration.GetValue<int?>("HighlightDisplayDuration")
+            ?? 3000;
+
         if (highlightMs < 1)
             highlightMs = 1;
 
         return TimeSpan.FromMilliseconds(highlightMs);
     }
 
-    private string GetSelectedDeviceSerial()
+    private bool ShouldAcceptEntry(TurnstileLogEntry entry)
     {
-        var selectedDeviceSerial = _configuration.GetValue<string>("SelectedDeviceSerial");
-        return string.IsNullOrWhiteSpace(selectedDeviceSerial) ? AllDevicesValue : selectedDeviceSerial;
+        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
+            return true;
+
+        return string.Equals(entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
     }
 
-    private int CountForSerial(string selectedDeviceSerial)
+    private static bool ShouldAcceptEntry(TurnstileLogEntry entry, string selectedDeviceSerial)
     {
-        if (selectedDeviceSerial == AllDevicesValue)
-            return _queue.Count;
+        if (string.IsNullOrWhiteSpace(selectedDeviceSerial) || selectedDeviceSerial == AllDevicesValue)
+            return true;
 
-        return _queue.Count(item =>
-            string.Equals(item.Entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase));
+        return string.Equals(entry.DeviceSerialNumber, selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void TrimQueueForType(Func<TurnstileLogEntry, bool> typePredicate)
+    {
+        while (CountForType(typePredicate) > MaxEntriesPerLogType)
+        {
+            var index = _queue.FindIndex(item => typePredicate(item.Entry));
+            if (index < 0)
+                break;
+
+            _queuedEntryIds.Remove(_queue[index].Entry.TimeLogId);
+            _queue.RemoveAt(index);
+        }
+    }
+
+    private int CountForType(Func<TurnstileLogEntry, bool> typePredicate)
+        => _queue.Count(item => typePredicate(item.Entry));
+
+    private static bool IsInLogType(TurnstileLogEntry entry)
+    {
+        var normalized = NormalizeLogType(entry.LogType);
+        return normalized.Contains("IN", StringComparison.Ordinal);
+    }
+
+    private static bool IsOutOrBreakOutLogType(TurnstileLogEntry entry)
+    {
+        var normalized = NormalizeLogType(entry.LogType);
+        return normalized.Contains("OUT", StringComparison.Ordinal)
+            || normalized.Contains("BREAK", StringComparison.Ordinal);
+    }
+
+    private static string NormalizeLogType(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return string.Empty;
+
+        return logType
+            .Trim()
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToUpperInvariant();
     }
 }

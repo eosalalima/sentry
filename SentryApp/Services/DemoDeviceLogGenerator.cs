@@ -27,12 +27,6 @@ public sealed class DemoDeviceLogGenerator : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (IsLiveModeEnabled())
-        {
-            _logger.LogInformation("Demo device log generator is disabled while live mode is active.");
-            return;
-        }
-
         while (!stoppingToken.IsCancellationRequested)
         {
             var delaySeconds = _random.Next(1, 11);

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using System.Text.RegularExpressions;
 using SentryApp.Data;
 using SentryApp.Data.Query;
 
@@ -11,8 +12,11 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
     private readonly TurnstileLogState _state;
     private readonly IPhotoUrlBuilder _photoUrlBuilder;
     private readonly TurnstilePollingController _controller;
+    private readonly PersonnelLookupService _personnelLookup;
+    private readonly SmsModuleSender _smsSender;
     private readonly IConfiguration _config;
     private readonly ILogger<TurnstileLogPollingWorker> _logger;
+    private readonly bool _flowDiagnosticsEnabled;
 
     private int _intervalMs;
     private int _lookbackSecondsOnStart;
@@ -30,6 +34,8 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         TurnstileLogState state,
         IPhotoUrlBuilder photoUrlBuilder,
         TurnstilePollingController controller,
+        PersonnelLookupService personnelLookup,
+        SmsModuleSender smsSender,
         IConfiguration config,
         ILogger<TurnstileLogPollingWorker> logger)
     {
@@ -37,8 +43,11 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         _state = state;
         _photoUrlBuilder = photoUrlBuilder;
         _controller = controller;
+        _personnelLookup = personnelLookup;
+        _smsSender = smsSender;
         _config = config;
         _logger = logger;
+        _flowDiagnosticsEnabled = _config.GetValue("TurnstilePolling:FlowDiagnosticsEnabled", false);
 
         _intervalMs = config.GetValue("TurnstilePolling:IntervalsMs", config.GetValue("TurnstilePolling:IntervalMs", 500));
         _lookbackSecondsOnStart = config.GetValue("TurnstilePolling:LookbackSecondsOntart", config.GetValue("TurnstilePolling:LookbackSecondsOnStart", 3));
@@ -104,7 +113,7 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
 
         // IMPORTANT:
         // - We poll DeviceLogs (per your requirement)
-        // - We join Personnels (name/photo) and ZKDevices (device name)
+        // - We join AccessControl.Personnels (name) and ZKDevices (device name)
         var sql = $@"
 SELECT TOP ({_maxRowsPerPoll})
     dl.Id                AS TimeLogId,
@@ -124,10 +133,10 @@ SELECT TOP ({_maxRowsPerPoll})
     zk.Name              AS DeviceName
 
 FROM DeviceLogs dl
-LEFT JOIN Personnels p
-    ON p.IsDeleted = 0
-   AND p.AccessNumber = dl.AccessNumber
-LEFT JOIN ZKDevices zk
+LEFT JOIN [dbo].[Personnels] p
+    ON p.AccessNumber = dl.AccessNumber
+   AND p.IsDeleted = 0
+LEFT JOIN [dbo].[ZKDevices] zk
     ON zk.IsDeleted = 0
    AND zk.SerialNumber = dl.DeviceSerialNumber
 WHERE dl.IsDeleted = 0
@@ -159,12 +168,18 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
         foreach (var row in rows)
         {
             if (_seen.ContainsKey(row.TimeLogId))
+            {
+                if (_flowDiagnosticsEnabled)
+                    _logger.LogInformation("Turnstile flow: duplicate row {EntryId} ignored in poll cycle.", row.TimeLogId);
+
                 continue;
+            }
 
             _seen[row.TimeLogId] = DateTimeOffset.UtcNow;
 
             var name = BuildName(row);
             var photoUrl = _photoUrlBuilder.Build(row.PhotoId);
+            var smsStatusMessage = await SendEntrySmsAsync(row, ct);
 
             var entry = new TurnstileLogEntry
             {
@@ -176,15 +191,39 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 PersonnelName = name,
                 AccessNumber = row.AccessNumber,
 
-                DeviceName = row.DeviceName ?? row.DeviceSerialNumber,
                 DeviceSerialNumber = row.DeviceSerialNumber,
+                DeviceName = row.DeviceName ?? row.DeviceSerialNumber,
                 VerifyMode = row.DeviceLogVerifyMode ?? row.TimeLogVerifyMode,
                 Event = row.Event,
-                EventAddress = row.EventAddress
+                EventAddress = row.EventAddress,
+                SmsStatusMessage = smsStatusMessage
             };
+
+            if (_flowDiagnosticsEnabled)
+                _logger.LogInformation("Turnstile flow: new entry {EntryId} detected and pushed to spotlight.", entry.TimeLogId);
 
             _state.Push(entry);
         }
+    }
+
+    private async Task<string> SendEntrySmsAsync(TurnstileLogRow row, CancellationToken ct)
+    {
+        var mobileNumber = await _personnelLookup.GetMobileNumberAsync(row.AccessNumber, ct);
+        if (string.IsNullOrWhiteSpace(mobileNumber))
+        {
+            return "SMS not sent: missing mobile number.";
+        }
+
+        var message = BuildSmsMessage(row);
+
+        var result = _smsSender.TrySend(mobileNumber, message);
+        if (!result.Success)
+        {
+            _logger.LogWarning("SMS send failed for {MobileNumber}: {Reason}", mobileNumber, result.Response);
+            return $"SMS failed: {result.Response}";
+        }
+
+        return $"SMS sent to {mobileNumber}.";
     }
 
     private static string BuildName(TurnstileLogRow row)
@@ -203,6 +242,68 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
 
         return $"{last}, {first}";
     }
+
+    private string BuildSmsMessage(TurnstileLogRow row)
+    {
+        var template = _config.GetValue("SmsModule:MessageFormat", DefaultSmsMessageFormat);
+        if (string.IsNullOrWhiteSpace(template))
+            template = DefaultSmsMessageFormat;
+
+        var localTime = row.TimeLogStamp.ToLocalTime();
+        var lastName = (row.LastName ?? string.Empty).Trim();
+        var firstName = (row.FirstName ?? string.Empty).Trim();
+        var inOut = ResolveInOut(row.LogType);
+
+        var message = template
+            .Replace("{PERSONNEL.LASTNAME}", lastName, StringComparison.OrdinalIgnoreCase)
+            .Replace("{PERSONNEL.FIRSTNAME}", firstName, StringComparison.OrdinalIgnoreCase)
+            .Replace("{IN or OUT}", inOut, StringComparison.OrdinalIgnoreCase)
+            .Replace("{LOGDATE}", localTime.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase)
+            .Replace("{LOGTIME}", localTime.ToString("HH:mm:ss"), StringComparison.OrdinalIgnoreCase);
+
+        message = ReplaceDateTimeToken(message, "LOGDATE", localTime, DefaultDateFormat);
+        message = ReplaceDateTimeToken(message, "LOGTIME", localTime, DefaultTimeFormat);
+
+        return message;
+    }
+
+    private static string ReplaceDateTimeToken(string message, string token, DateTimeOffset localTime, string fallbackFormat)
+    {
+        var pattern = $@"\{{{token}=DATEFORMAT:(?<format>[^}}]+)\}}";
+        message = Regex.Replace(message, pattern, match =>
+        {
+            var format = match.Groups["format"].Value;
+            if (string.IsNullOrWhiteSpace(format))
+                format = fallbackFormat;
+            return localTime.ToString(format);
+        }, RegexOptions.IgnoreCase);
+
+        pattern = $@"\{{{token}=TIMEFORMAT:(?<format>[^}}]+)\}}";
+        message = Regex.Replace(message, pattern, match =>
+        {
+            var format = match.Groups["format"].Value;
+            if (string.IsNullOrWhiteSpace(format))
+                format = fallbackFormat;
+            return localTime.ToString(format);
+        }, RegexOptions.IgnoreCase);
+
+        return message;
+    }
+
+    private static string ResolveInOut(string? logType)
+    {
+        var normalized = (logType ?? string.Empty).Trim();
+        if (normalized.Contains("OUT", StringComparison.OrdinalIgnoreCase))
+            return "OUT";
+        if (normalized.Contains("IN", StringComparison.OrdinalIgnoreCase))
+            return "IN";
+        return "IN/OUT";
+    }
+
+    private const string DefaultSmsMessageFormat =
+        "{PERSONNEL.LASTNAME}, {PERSONNEL.FIRSTNAME} has {IN or OUT} on {LOGDATE=DATEFORMAT:dd-MMM-yyyy} {LOGTIME=TIMEFORMAT:hh:mm tt} * Auto-generated SMS - do not reply";
+    private const string DefaultDateFormat = "dd-MMM-yyyy";
+    private const string DefaultTimeFormat = "hh:mm tt";
 
     private void CleanupSeen()
     {

@@ -19,16 +19,19 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddDbContextFactory<AccessControlDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("AccessControlDb")));
+builder.Services.AddDbContextFactory<StaffDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("StaffDb")));
+builder.Services.AddDbContextFactory<StudentDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("StudentDb")));
 
 builder.Services.AddSingleton<TurnstileLogState>();
 builder.Services.AddSingleton<TurnstilePollingController>();
 builder.Services.Configure<PhotoOptions>(builder.Configuration.GetSection("PhotoOptions"));
 builder.Services.AddSingleton<IPhotoUrlBuilder, PhotoUrlBuilder>();
+builder.Services.AddSingleton<PersonnelLookupService>();
+builder.Services.AddSingleton<SmsModuleSender>();
 builder.Services.AddHostedService<TurnstileLogPollingWorker>();
-
-var isLiveMode = builder.Configuration.GetValue<bool>("IsLiveMode");
-if (!isLiveMode)
-    builder.Services.AddHostedService<DemoDeviceLogGenerator>();
+builder.Services.AddHostedService<DemoDeviceLogGenerator>();
 
 var app = builder.Build();
 
@@ -109,9 +112,9 @@ static class SmsRequestParser
         if (request.HasFormContentType)
         {
             var form = await request.ReadFormAsync(cancellationToken);
-            var to = FirstNonEmpty(form["to"], form["phone"], form["phoneNumber"], form["recipient"]);
-            var message = FirstNonEmpty(form["message"], form["body"], form["text"]);
-            return Build(to, message);
+            var formTo = FirstNonEmpty(form["to"], form["phone"], form["phoneNumber"], form["recipient"]);
+            var formMessage = FirstNonEmpty(form["message"], form["body"], form["text"]);
+            return Build(formTo, formMessage);
         }
 
         if (request.ContentLength is null or 0)

@@ -12,7 +12,7 @@
 
     <div class="mon-body">
         <div class="mon-left">
-            <FeedGrid Items="State.QueueSnapshot" SelectedDeviceSerial="EffectiveSelectedDeviceSerial" />
+            <LogQueue Items="FilteredQueueItems" />
         </div>
 
         <div class="mon-right">
@@ -26,6 +26,7 @@
     private const string SelectedDeviceSerialStorageKey = "SelectedDeviceSerial";
 
     private string _selectedDeviceSerial = AllDevicesValue;
+    private string _appliedDeviceSerial = AllDevicesValue;
 
     protected override void OnInitialized()
     {
@@ -41,7 +42,11 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnStateChanged() => _ = InvokeAsync(() =>
+    {
+        ApplySelectedDeviceSerial(EffectiveSelectedDeviceSerial);
+        StateHasChanged();
+    });
 
     public void Dispose()
     {
@@ -53,13 +58,18 @@
     ? entry
     : null;
 
+    private IReadOnlyList<TurnstileQueueItem> FilteredQueueItems =>
+        State.QueueSnapshot
+            .Where(item => ShouldDisplay(item.Entry))
+            .ToList();
+
     private bool ShouldDisplay(TurnstileLogEntry entry)
     {
         if (EffectiveSelectedDeviceSerial == AllDevicesValue)
             return true;
 
         return !string.IsNullOrWhiteSpace(entry.DeviceSerialNumber)
-        && entry.DeviceSerialNumber == EffectiveSelectedDeviceSerial;
+        && string.Equals(entry.DeviceSerialNumber, EffectiveSelectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
     }
 
     private string EffectiveSelectedDeviceSerial =>
@@ -83,10 +93,21 @@
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(storedSerial)
             ? AllDevicesValue
             : storedSerial;
+            ApplySelectedDeviceSerial(EffectiveSelectedDeviceSerial);
         }
         catch (JSException)
         {
             _selectedDeviceSerial = AllDevicesValue;
+            ApplySelectedDeviceSerial(EffectiveSelectedDeviceSerial);
         }
+    }
+
+    private void ApplySelectedDeviceSerial(string desiredSerial)
+    {
+        if (string.Equals(_appliedDeviceSerial, desiredSerial, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _appliedDeviceSerial = desiredSerial;
+        State.UpdateSelectedDeviceSerial(desiredSerial);
     }
 }

@@ -20,5 +20,16 @@
 
 @code {
     [Parameter, EditorRequired] public TurnstileLogEntry Entry { get; set; } = new();
-    private bool IsOut => string.Equals(Entry.LogType, "OUT", StringComparison.OrdinalIgnoreCase);
+    private bool IsOut => NormalizeLogType(Entry.LogType) is "OUT" or "BREAKOUT";
+
+    private static string NormalizeLogType(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return string.Empty;
+
+        return logType
+            .Trim()
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToUpperInvariant();
+    }
 }

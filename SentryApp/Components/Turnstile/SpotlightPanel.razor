@@ -3,11 +3,11 @@
 
 <div class="spot">
     <div class="spot-bar @(IsOut ? "bar-out" : "bar-in")">
-        <div class="spot-bar-left">@((Entry?.LogType ?? "").ToUpperInvariant())</div>
+        <div class="spot-bar-left">@((VisibleEntry?.LogType ?? "").ToUpperInvariant())</div>
         <div class="spot-bar-right">@_clockText</div>
     </div>
 
-    @if (Entry is null)
+    @if (VisibleEntry is null)
     {
         <div class="spot-empty">Waiting for turnstile logs…</div>
     }
@@ -15,17 +15,22 @@
     {
         <div class="spot-body">
             <div class="spot-photo-wrap">
-                <img class="spot-photo" src="@Entry.PhotoUrl" alt="Photo" />
+                <img class="spot-photo" src="@VisibleEntry.PhotoUrl" alt="Photo" />
             </div>
 
-            <div class="spot-name">@Entry.PersonnelName</div>
-            <div class="spot-sub">@Entry.VerifyMode</div>
+            <div class="spot-name">@VisibleEntry.PersonnelName</div>
+            <div class="spot-sub">@VisibleEntry.VerifyMode</div>
 
             <div class="spot-meta">
-                <div><span>Access #</span> @Entry.AccessNumber</div>
-                <div><span>Device</span> @Entry.DeviceName</div>
-                <div><span>Event</span> @Entry.Event</div>
-                <div><span>EventAddress</span> @Entry.EventAddress</div>
+                <div><span>Access #</span> @VisibleEntry.AccessNumber</div>
+                <div><span>Device</span> @VisibleEntry.DeviceName</div>
+                <div><span>Event</span> @VisibleEntry.Event</div>
+                <div><span>EventAddress</span> @VisibleEntry.EventAddress</div>
+            </div>
+
+            <div class="spot-sms">
+                <div class="spot-sms-label">SMS Status</div>
+                <div class="spot-sms-message">@VisibleEntry.SmsStatusMessage</div>
             </div>
         </div>
     }
@@ -37,7 +42,19 @@
     private readonly System.Timers.Timer _clock = new(1000);
     private string _clockText = DateTime.Now.ToString("HH:mm:ss");
 
-    private bool IsOut => string.Equals(Entry?.LogType, "OUT", StringComparison.OrdinalIgnoreCase);
+    private bool IsOut => NormalizeLogType(Entry?.LogType) is "OUT" or "BREAKOUT";
+    private TurnstileLogEntry? VisibleEntry => Entry;
+
+    private static string NormalizeLogType(string? logType)
+    {
+        if (string.IsNullOrWhiteSpace(logType))
+            return string.Empty;
+
+        return logType
+            .Trim()
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToUpperInvariant();
+    }
 
     protected override void OnInitialized()
     {
