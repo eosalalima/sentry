@@ -26,7 +26,6 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
     private DateTimeOffset _sinceUtc;
     private readonly Dictionary<Guid, DateTimeOffset> _seen = new();
 
-    private DateTimeOffset _lastStampUtc;
     private Guid _lastId;
 
     public TurnstileLogPollingWorker(
@@ -53,7 +52,6 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         _lookbackSecondsOnStart = config.GetValue("TurnstilePolling:LookbackSecondsOntart", config.GetValue("TurnstilePolling:LookbackSecondsOnStart", 3));
         _maxRowsPerPoll = config.GetValue("TurnstilePolling:MaxRowsPerPoll", 20);
 
-        _lastStampUtc = DateTimeOffset.UtcNow.AddSeconds(-_lookbackSecondsOnStart);
         _lastId = Guid.Empty;
         _controller.StatusChanged += OnPollingStatusChanged;
     }
@@ -154,17 +152,6 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
         if (rows.Count == 0)
             return;
 
-        if (rows.Count > 0)
-        {
-            var last = rows[^1];
-            _lastStampUtc = last.TimeLogStamp;
-            _lastId = last.TimeLogId;
-        }
-
-        // advance watermark to max timestamp we saw (use >= in query + _seen to avoid missing same-timestamp rows)
-        var maxStamp = rows.Max(r => r.TimeLogStamp);
-        _sinceUtc = maxStamp;
-
         foreach (var row in rows)
         {
             if (_seen.ContainsKey(row.TimeLogId))
@@ -172,10 +159,9 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 if (_flowDiagnosticsEnabled)
                     _logger.LogInformation("Turnstile flow: duplicate row {EntryId} ignored in poll cycle.", row.TimeLogId);
 
+                AdvanceCursor(row);
                 continue;
             }
-
-            _seen[row.TimeLogId] = DateTimeOffset.UtcNow;
 
             var name = BuildName(row);
             var photoUrl = _photoUrlBuilder.Build(row.PhotoId);
@@ -203,7 +189,19 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 _logger.LogInformation("Turnstile flow: new entry {EntryId} detected and pushed to spotlight.", entry.TimeLogId);
 
             _state.Push(entry);
+
+            // Only acknowledge a row after all processing has completed. Advancing the
+            // cursor before this point caused transient SMS/processing failures to drop
+            // the entire fetched batch permanently.
+            _seen[row.TimeLogId] = DateTimeOffset.UtcNow;
+            AdvanceCursor(row);
         }
+    }
+
+    private void AdvanceCursor(TurnstileLogRow row)
+    {
+        _sinceUtc = row.TimeLogStamp;
+        _lastId = row.TimeLogId;
     }
 
     private async Task<string> SendEntrySmsAsync(TurnstileLogRow row, CancellationToken ct)
@@ -323,7 +321,6 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
         _maxRowsPerPoll = _config.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
 
         _sinceUtc = DateTimeOffset.UtcNow.AddSeconds(-_lookbackSecondsOnStart);
-        _lastStampUtc = _sinceUtc;
         _lastId = Guid.Empty;
     }
 }
