@@ -110,3 +110,18 @@
 2026-07-03 16:29:27 | To: 09534831348 | Message: LACANILAO, CONRADO has Logged OUT on 03-Jul-2026 04:29 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
 2026-07-18 09:31:35 | To: 09311728735 | Message: OANES, JOHN RYAN has Logged OUT on 18-Jul-2026 09:31 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
 2026-07-18 09:32:16 | To: 09678156126 | Message: MATEO, JUVELYN has Logged IN on 18-Jul-2026 09:32 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-08-28 07:39:26 | To: 09534831776 | Message: COLLIADO, MYLENE has Logged OUT on 28-Aug-2026 07:39 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-08-28 07:39:36 | To: 097714289193 | Message: DELA CRUZ, RENATO has Logged OUT on 28-Aug-2026 07:39 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-08-28 07:40:10 | To: 09944724181 | Message: MARCELO, KIAN has Logged OUT on 28-Aug-2026 07:40 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-08-28 07:41:15 | To: 09532080959 | Message: JARDIEL, ELDRIAN has Logged OUT on 28-Aug-2026 07:41 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-08-28 07:41:58 | To: 09202867650 | Message: RECTO JR., CLARITO has Logged OUT on 28-Aug-2026 07:41 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-08-28 07:46:17 | To: 09193049055 | Message: NAVALLO, MA.MERLYN has Logged OUT on 28-Aug-2026 07:46 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-08-28 07:46:25 | To: 09753692308 | Message: GARCIA, CARL JOSEPH has Logged OUT on 28-Aug-2026 07:46 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-08-28 07:47:21 | To: 09978372757 | Message: REYES, MARK RAVEN has Logged OUT on 28-Aug-2026 07:47 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-08-28 07:49:08 | To: 09637625049 | Message: BUENAOBRA JR., LAURO has Logged OUT on 28-Aug-2026 07:49 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-08-28 07:49:21 | To: 09366859967 | Message: ESTARES, RONNEL has Logged OUT on 28-Aug-2026 07:49 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-06 23:50:38 | To: 9050323771 | Message: GARCIA, EMILY JOY has Logged IN on 06-Sep-2026 11:50 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-06 23:51:00 | To: 09684704971 | Message: REYES, RONNEL has Logged OUT on 06-Sep-2026 11:50 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-06 23:56:52 | To: 09758230403 | Message: LOPEZ, CARLA has Logged IN on 06-Sep-2026 11:56 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-06 23:57:48 | To: 463-6962 | Message: TAN, DANILO has Logged OUT on 06-Sep-2026 11:57 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-06 23:57:52 | To: 9973015932 | Message: TRINIDAD, MILDRED has Logged OUT on 06-Sep-2026 11:57 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
