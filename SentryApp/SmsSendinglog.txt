@@ -125,3 +125,11 @@
 2026-09-06 23:56:52 | To: 09758230403 | Message: LOPEZ, CARLA has Logged IN on 06-Sep-2026 11:56 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
 2026-09-06 23:57:48 | To: 463-6962 | Message: TAN, DANILO has Logged OUT on 06-Sep-2026 11:57 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
 2026-09-06 23:57:52 | To: 9973015932 | Message: TRINIDAD, MILDRED has Logged OUT on 06-Sep-2026 11:57 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-11 13:27:28 | To: 09752050703 | Message: PANGILINAN, ROSE ANN has Logged OUT on 11-Sep-2026 01:27 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-11 13:28:42 | To: 09556129498 | Message: BALLOS, SANTIAGO has Logged OUT on 11-Sep-2026 01:28 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-11 13:30:32 | To: 09079285494 | Message: DELA CRUZ, KRISTINE has Logged OUT on 11-Sep-2026 01:30 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-13 08:36:22 | To: 9554404621 | Message: ESQUIVEL, MARK ANTHONY has Logged IN on 13-Sep-2026 08:36 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-13 08:37:02 | To: 09361619808 | Message: FEBRERO, AL JOHN has Logged IN on 13-Sep-2026 08:37 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-13 08:37:56 | To: 9165006099 | Message: VILLANUEVA, JOHN CHRISTIAN has Logged OUT on 13-Sep-2026 08:37 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-13 08:38:14 | To: 09353719036 | Message: PABLO, VIRGINIA has Logged OUT on 13-Sep-2026 08:38 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-13 08:38:38 | To: 09360716329 | Message: TORRES, REYMOND has Logged IN on 13-Sep-2026 08:38 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
