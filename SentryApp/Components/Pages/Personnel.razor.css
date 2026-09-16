@@ -1,0 +1,14 @@
+.personnel-page { min-height: 100vh; background: var(--bg); padding: 18px; }
+.personnel-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 18px; }
+.personnel-header h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
+.personnel-header p { margin: .25rem 0 0; color: #667085; }
+.personnel-card { background: var(--card); border: 1px solid rgba(0,0,0,.06); border-radius: 8px; box-shadow: var(--shadow); padding: 18px; }
+.personnel-toolbar { display: flex; gap: .5rem; max-width: 620px; margin: 18px 0; }
+.personnel-state { min-height: 220px; display: flex; flex-direction: column; gap: .75rem; align-items: center; justify-content: center; color: #667085; }
+.personnel-table { white-space: nowrap; }
+.personnel-table thead th { color: #475467; font-size: .875rem; }
+.personnel-pagination { display: flex; justify-content: space-between; align-items: center; gap: 1rem; color: #667085; margin-top: .75rem; }
+@media (max-width: 700px) {
+  .personnel-page { padding: 10px; }
+  .personnel-header, .personnel-pagination { align-items: flex-start; flex-direction: column; }
+}

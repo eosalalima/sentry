@@ -1,0 +1,296 @@
+@page "/personnel"
+@rendermode InteractiveServer
+@using SentryApp.Data.Query
+@using SentryApp.Services
+@inject PersonnelManagementService PersonnelService
+
+<PageTitle>Personnel Management</PageTitle>
+
+<div class="personnel-page">
+    <header class="personnel-header">
+        <div>
+            <h1>Personnel Management</h1>
+            <p>View personnel records and maintain mobile numbers.</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="/">Back to Monitoring</a>
+    </header>
+
+    <div class="personnel-card">
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @TabClass(PersonnelType.Student)" type="button" role="tab"
+                        aria-selected="@(_selectedType == PersonnelType.Student)" @onclick="() => SelectTabAsync(PersonnelType.Student)">
+                    Student
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @TabClass(PersonnelType.Staff)" type="button" role="tab"
+                        aria-selected="@(_selectedType == PersonnelType.Staff)" @onclick="() => SelectTabAsync(PersonnelType.Staff)">
+                    Staff
+                </button>
+            </li>
+        </ul>
+
+        <div class="personnel-toolbar">
+            <label class="visually-hidden" for="personnelSearch">Search @_selectedType personnel</label>
+            <input id="personnelSearch" class="form-control" type="search" placeholder="Search @_selectedType personnel..."
+                   @bind="_search" @bind:event="oninput" @onkeyup="HandleSearchKeyUp" />
+            <button class="btn btn-primary" type="button" @onclick="SearchAsync" disabled="@_isLoading">Search</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_successMessage))
+        {
+            <div class="alert alert-success" role="status">@_successMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">@_errorMessage</div>
+        }
+        else if (_isLoading)
+        {
+            <div class="personnel-state" role="status">
+                <div class="spinner-border text-primary" aria-hidden="true"></div>
+                <span>Loading @_selectedType personnel...</span>
+            </div>
+        }
+        else if (_records.Count == 0)
+        {
+            <div class="personnel-state">
+                @if (string.IsNullOrWhiteSpace(_appliedSearch))
+                {
+                    <span>No @_selectedType personnel records exist.</span>
+                }
+                else
+                {
+                    <span>No records match “@_appliedSearch”.</span>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle personnel-table">
+                    <thead>
+                        <tr>
+                            <th>@(_selectedType == PersonnelType.Student ? "ID Number" : "IS Number")</th>
+                            <th>Last Name</th>
+                            <th>First Name</th>
+                            <th>Middle Initial</th>
+                            <th>@(_selectedType == PersonnelType.Student ? "Course" : "Designation")</th>
+                            <th>Mobile Number</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var record in _records)
+                        {
+                            <tr>
+                                <td>@record.IdNumber</td>
+                                <td>@record.LastName</td>
+                                <td>@record.FirstName</td>
+                                <td>@record.MiddleInitial</td>
+                                <td>@record.Classification</td>
+                                <td>@record.MobileNumber</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary" type="button" title="Edit Mobile Number"
+                                            aria-label="Edit Mobile Number for @record.FirstName @record.LastName" @onclick="() => OpenEdit(record)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                                            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10A.5.5 0 0 1 5.5 14H2a.5.5 0 0 1-.5-.5V10a.5.5 0 0 1 .146-.354zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zM12.793 5.5 10.5 3.207 2.5 11.207V13h1.793z" />
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="personnel-pagination">
+                <span>Showing @FirstRecord–@LastRecord of @_totalCount</span>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" disabled="@(_page == 1)" @onclick="PreviousPageAsync">Previous</button>
+                    <span class="mx-2">Page @_page of @TotalPages</span>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" disabled="@(_page >= TotalPages)" @onclick="NextPageAsync">Next</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_editingRecord is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="editMobileTitle">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="editMobileTitle">Edit Mobile Number</h2>
+                    <button type="button" class="btn-close" aria-label="Close" disabled="@_isSaving" @onclick="CancelEdit"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_saveError))
+                    {
+                        <div class="alert alert-danger" role="alert">@_saveError</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label" for="editId">@(_selectedType == PersonnelType.Student ? "ID Number" : "IS Number")</label>
+                        <input id="editId" class="form-control" value="@_editingRecord.IdNumber" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="editLastName">Last Name</label>
+                        <input id="editLastName" class="form-control" value="@_editingRecord.LastName" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="editFirstName">First Name</label>
+                        <input id="editFirstName" class="form-control" value="@_editingRecord.FirstName" readonly />
+                    </div>
+                    <div>
+                        <label class="form-label" for="editMobile">Mobile Number</label>
+                        <input id="editMobile" class="form-control" type="tel" maxlength="@PersonnelManagementService.MobileNumberMaxLength"
+                               @bind="_editedMobileNumber" @bind:event="oninput" />
+                        <div class="form-text">Up to @PersonnelManagementService.MobileNumberMaxLength characters. A blank value clears the mobile number.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" type="button" disabled="@_isSaving" @onclick="SaveAsync">
+                        @(_isSaving ? "Saving..." : "Save")
+                    </button>
+                    <button class="btn btn-secondary" type="button" disabled="@_isSaving" @onclick="CancelEdit">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private const int PageSize = 25;
+    private PersonnelType _selectedType = PersonnelType.Student;
+    private IReadOnlyList<PersonnelManagementRecord> _records = [];
+    private PersonnelManagementRecord? _editingRecord;
+    private string _search = string.Empty;
+    private string _appliedSearch = string.Empty;
+    private string _editedMobileNumber = string.Empty;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private string? _saveError;
+    private int _page = 1;
+    private int _totalCount;
+    private bool _isLoading = true;
+    private bool _isSaving;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_totalCount / (double)PageSize));
+    private int FirstRecord => _totalCount == 0 ? 0 : ((_page - 1) * PageSize) + 1;
+    private int LastRecord => Math.Min(_page * PageSize, _totalCount);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private string TabClass(PersonnelType type) => _selectedType == type ? "active" : string.Empty;
+
+    private async Task SelectTabAsync(PersonnelType type)
+    {
+        if (_selectedType == type)
+            return;
+        _selectedType = type;
+        _search = string.Empty;
+        _appliedSearch = string.Empty;
+        _page = 1;
+        _successMessage = null;
+        await LoadAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        _appliedSearch = _search.Trim();
+        _page = 1;
+        _successMessage = null;
+        await LoadAsync();
+    }
+
+    private async Task HandleSearchKeyUp(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+            await SearchAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            var result = await PersonnelService.GetPersonnelAsync(_selectedType, _appliedSearch, _page, PageSize);
+            _records = result.Records;
+            _totalCount = result.TotalCount;
+        }
+        catch
+        {
+            _records = [];
+            _totalCount = 0;
+            _errorMessage = "Personnel records could not be loaded. Please try again or contact your administrator.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenEdit(PersonnelManagementRecord record)
+    {
+        _editingRecord = record;
+        _editedMobileNumber = record.MobileNumber ?? string.Empty;
+        _saveError = null;
+    }
+
+    private void CancelEdit()
+    {
+        if (_isSaving)
+            return;
+        _editingRecord = null;
+        _editedMobileNumber = string.Empty;
+        _saveError = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_editingRecord is null || _isSaving)
+            return;
+        var normalizedMobile = _editedMobileNumber.Trim();
+        if (normalizedMobile.Length > PersonnelManagementService.MobileNumberMaxLength)
+        {
+            _saveError = $"Mobile number cannot exceed {PersonnelManagementService.MobileNumberMaxLength} characters.";
+            return;
+        }
+
+        _isSaving = true;
+        _saveError = null;
+        try
+        {
+            await PersonnelService.UpdateMobileNumberAsync(_selectedType, _editingRecord.IdNumber, normalizedMobile);
+            _editingRecord = null;
+            await LoadAsync();
+            _successMessage = "Mobile number updated successfully.";
+        }
+        catch
+        {
+            _saveError = "The mobile number could not be saved. Please try again or contact your administrator.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (_page <= 1) return;
+        _page--;
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_page >= TotalPages) return;
+        _page++;
+        await LoadAsync();
+    }
+}
