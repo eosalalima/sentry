@@ -29,6 +29,7 @@ builder.Services.AddSingleton<TurnstilePollingController>();
 builder.Services.Configure<PhotoOptions>(builder.Configuration.GetSection("PhotoOptions"));
 builder.Services.AddSingleton<IPhotoUrlBuilder, PhotoUrlBuilder>();
 builder.Services.AddSingleton<PersonnelLookupService>();
+builder.Services.AddSingleton<PersonnelManagementService>();
 builder.Services.AddSingleton<SmsModuleSender>();
 builder.Services.AddHostedService<TurnstileLogPollingWorker>();
 builder.Services.AddHostedService<DemoDeviceLogGenerator>();
