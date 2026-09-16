@@ -79,18 +79,18 @@ public sealed class PersonnelManagementService
     private async Task<PersonnelPage> GetStudentsAsync(string pattern, int offset, int pageSize, CancellationToken ct)
     {
         await using var db = await _studentDbFactory.CreateDbContextAsync(ct);
-        var count = await db.Database.SqlQueryRaw<int>($"""
+        var count = await db.Database.SqlQueryRaw<int>($$"""
             SELECT COUNT(*) AS [Value]
             FROM [dbo].[MyDataTable]
-            WHERE {StudentSearchClause}
+            WHERE {{StudentSearchClause}}
             """, pattern).SingleAsync(ct);
-        var records = await db.Database.SqlQueryRaw<PersonnelManagementRecord>($"""
+        var records = await db.Database.SqlQueryRaw<PersonnelManagementRecord>($$"""
             SELECT Field01 AS IdNumber, Field02 AS LastName, Field03 AS FirstName,
                    Field04 AS MiddleInitial, Field06 AS Classification, Field13 AS MobileNumber
             FROM [dbo].[MyDataTable]
-            WHERE {StudentSearchClause}
+            WHERE {{StudentSearchClause}}
             ORDER BY Field02 ASC, Field03 ASC, Field04 ASC
-            OFFSET {{1}} ROWS FETCH NEXT {{2}} ROWS ONLY
+            OFFSET {1} ROWS FETCH NEXT {2} ROWS ONLY
             """, pattern, offset, pageSize).ToListAsync(ct);
         return new PersonnelPage(records, count);
     }
@@ -98,18 +98,18 @@ public sealed class PersonnelManagementService
     private async Task<PersonnelPage> GetStaffAsync(string pattern, int offset, int pageSize, CancellationToken ct)
     {
         await using var db = await _staffDbFactory.CreateDbContextAsync(ct);
-        var count = await db.Database.SqlQueryRaw<int>($"""
+        var count = await db.Database.SqlQueryRaw<int>($$"""
             SELECT COUNT(*) AS [Value]
             FROM [dbo].[MyDataTable]
-            WHERE {StaffSearchClause}
+            WHERE {{StaffSearchClause}}
             """, pattern).SingleAsync(ct);
-        var records = await db.Database.SqlQueryRaw<PersonnelManagementRecord>($"""
+        var records = await db.Database.SqlQueryRaw<PersonnelManagementRecord>($$"""
             SELECT Field01 AS IdNumber, Field02 AS LastName, Field03 AS FirstName,
                    Field04 AS MiddleInitial, Field05 AS Classification, Field13 AS MobileNumber
             FROM [dbo].[MyDataTable]
-            WHERE {StaffSearchClause}
+            WHERE {{StaffSearchClause}}
             ORDER BY Field02 ASC, Field03 ASC, Field04 ASC
-            OFFSET {{1}} ROWS FETCH NEXT {{2}} ROWS ONLY
+            OFFSET {1} ROWS FETCH NEXT {2} ROWS ONLY
             """, pattern, offset, pageSize).ToListAsync(ct);
         return new PersonnelPage(records, count);
     }
