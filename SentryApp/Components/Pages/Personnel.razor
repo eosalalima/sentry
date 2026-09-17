@@ -1,8 +1,10 @@
 @page "/personnel"
 @rendermode InteractiveServer
+@using Microsoft.Extensions.Configuration
 @using SentryApp.Data.Query
 @using SentryApp.Services
 @inject PersonnelManagementService PersonnelService
+@inject IConfiguration Configuration
 
 <PageTitle>Personnel Management</PageTitle>
 
@@ -106,12 +108,23 @@
             </div>
 
             <div class="personnel-pagination">
-                <span>Showing @FirstRecord–@LastRecord of @_totalCount</span>
-                <div>
-                    <button class="btn btn-sm btn-outline-secondary" type="button" disabled="@(_page == 1)" @onclick="PreviousPageAsync">Previous</button>
-                    <span class="mx-2">Page @_page of @TotalPages</span>
-                    <button class="btn btn-sm btn-outline-secondary" type="button" disabled="@(_page >= TotalPages)" @onclick="NextPageAsync">Next</button>
-                </div>
+                <span>Showing @FirstRecord–@LastRecord of @_totalCount (@_pageSize per page)</span>
+                <nav aria-label="@_selectedType personnel pagination">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(_page == 1 ? "disabled" : null)">
+                            <button class="page-link" type="button" disabled="@(_page == 1)" @onclick="PreviousPageAsync">Previous</button>
+                        </li>
+                        @foreach (var pageNumber in VisiblePageNumbers)
+                        {
+                            <li class="page-item @(pageNumber == _page ? "active" : null)" aria-current="@(pageNumber == _page ? "page" : null)">
+                                <button class="page-link" type="button" @onclick="() => GoToPageAsync(pageNumber)">@pageNumber</button>
+                            </li>
+                        }
+                        <li class="page-item @(_page >= TotalPages ? "disabled" : null)">
+                            <button class="page-link" type="button" disabled="@(_page >= TotalPages)" @onclick="NextPageAsync">Next</button>
+                        </li>
+                    </ul>
+                </nav>
             </div>
         }
     </div>
@@ -163,7 +176,7 @@
 }
 
 @code {
-    private const int PageSize = 25;
+    private const int DefaultPageSize = 50;
     private PersonnelType _selectedType = PersonnelType.Student;
     private IReadOnlyList<PersonnelManagementRecord> _records = [];
     private PersonnelManagementRecord? _editingRecord;
@@ -174,15 +187,30 @@
     private string? _successMessage;
     private string? _saveError;
     private int _page = 1;
+    private int _pageSize = DefaultPageSize;
     private int _totalCount;
     private bool _isLoading = true;
     private bool _isSaving;
 
-    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_totalCount / (double)PageSize));
-    private int FirstRecord => _totalCount == 0 ? 0 : ((_page - 1) * PageSize) + 1;
-    private int LastRecord => Math.Min(_page * PageSize, _totalCount);
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_totalCount / (double)_pageSize));
+    private int FirstRecord => _totalCount == 0 ? 0 : ((_page - 1) * _pageSize) + 1;
+    private int LastRecord => Math.Min(_page * _pageSize, _totalCount);
+    private IEnumerable<int> VisiblePageNumbers
+    {
+        get
+        {
+            var firstPage = Math.Max(1, _page - 2);
+            var lastPage = Math.Min(TotalPages, firstPage + 4);
+            firstPage = Math.Max(1, lastPage - 4);
+            return Enumerable.Range(firstPage, lastPage - firstPage + 1);
+        }
+    }
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override Task OnInitializedAsync()
+    {
+        _pageSize = Math.Clamp(Configuration.GetValue("PersonnelManagement:ItemsPerPage", DefaultPageSize), 1, 100);
+        return LoadAsync();
+    }
 
     private string TabClass(PersonnelType type) => _selectedType == type ? "active" : string.Empty;
 
@@ -218,7 +246,7 @@
         _errorMessage = null;
         try
         {
-            var result = await PersonnelService.GetPersonnelAsync(_selectedType, _appliedSearch, _page, PageSize);
+            var result = await PersonnelService.GetPersonnelAsync(_selectedType, _appliedSearch, _page, _pageSize);
             _records = result.Records;
             _totalCount = result.TotalCount;
         }
@@ -291,6 +319,13 @@
     {
         if (_page >= TotalPages) return;
         _page++;
+        await LoadAsync();
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        if (page == _page || page < 1 || page > TotalPages) return;
+        _page = page;
         await LoadAsync();
     }
 }
