@@ -86,7 +86,7 @@ public sealed class PersonnelManagementService
             """, pattern).SingleAsync(ct);
         var records = await db.Database.SqlQueryRaw<PersonnelManagementRecord>($$"""
             SELECT Field01 AS IdNumber, Field02 AS LastName, Field03 AS FirstName,
-                   Field04 AS MiddleInitial, Field06 AS Classification, Field13 AS MobileNumber
+                   Field04 AS MiddleInitial, Field06 AS Classification, [Field10] AS MobileNumber
             FROM [dbo].[MyDataTable]
             WHERE {{StudentSearchClause}}
             ORDER BY Field02 ASC, Field03 ASC, Field04 ASC
@@ -118,7 +118,7 @@ public sealed class PersonnelManagementService
     {
         await using var db = await _studentDbFactory.CreateDbContextAsync(ct);
         return await db.Database.ExecuteSqlAsync(
-            $"UPDATE [dbo].[MyDataTable] SET Field13 = {mobileNumber} WHERE Field01 = {idNumber}", ct);
+            $"UPDATE [dbo].[MyDataTable] SET [Field10] = {mobileNumber} WHERE Field01 = {idNumber}", ct);
     }
 
     private async Task<int> UpdateStaffAsync(string idNumber, string? mobileNumber, CancellationToken ct)
@@ -136,7 +136,7 @@ public sealed class PersonnelManagementService
 
     private const string StudentSearchClause = """
         (Field01 LIKE {0} ESCAPE '~' OR Field02 LIKE {0} ESCAPE '~' OR Field03 LIKE {0} ESCAPE '~'
-         OR Field04 LIKE {0} ESCAPE '~' OR Field06 LIKE {0} ESCAPE '~' OR Field13 LIKE {0} ESCAPE '~')
+         OR Field04 LIKE {0} ESCAPE '~' OR Field06 LIKE {0} ESCAPE '~' OR [Field10] LIKE {0} ESCAPE '~')
         """;
 
     private const string StaffSearchClause = """
