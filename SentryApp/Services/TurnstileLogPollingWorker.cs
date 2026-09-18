@@ -165,7 +165,8 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
 
             var name = BuildName(row);
             var photoUrl = _photoUrlBuilder.Build(row.PhotoId);
-            var smsStatusMessage = await SendEntrySmsAsync(row, ct);
+            var personnel = await _personnelLookup.GetPersonnelAsync(row.AccessNumber, ct);
+            var smsStatusMessage = SendEntrySms(row, personnel?.MobileNumber);
 
             var entry = new TurnstileLogEntry
             {
@@ -175,6 +176,7 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 LogType = row.LogType,
                 PhotoUrl = photoUrl,
                 PersonnelName = name,
+                Classification = personnel?.Classification,
                 AccessNumber = row.AccessNumber,
 
                 DeviceSerialNumber = row.DeviceSerialNumber,
@@ -204,9 +206,8 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
         _lastId = row.TimeLogId;
     }
 
-    private async Task<string> SendEntrySmsAsync(TurnstileLogRow row, CancellationToken ct)
+    private string SendEntrySms(TurnstileLogRow row, string? mobileNumber)
     {
-        var mobileNumber = await _personnelLookup.GetMobileNumberAsync(row.AccessNumber, ct);
         if (string.IsNullOrWhiteSpace(mobileNumber))
         {
             return "SMS not sent: missing mobile number.";
