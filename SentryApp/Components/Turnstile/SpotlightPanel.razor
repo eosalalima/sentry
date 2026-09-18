@@ -14,23 +14,29 @@
     else
     {
         <div class="spot-body">
-            <div class="spot-photo-wrap">
-                <img class="spot-photo" src="@VisibleEntry.PhotoUrl" alt="Photo" />
-            </div>
+            <div class="spot-content">
+                <div class="spot-photo-wrap">
+                    <img class="spot-photo" src="@VisibleEntry.PhotoUrl" alt="Photo of @VisibleEntry.PersonnelName" />
+                </div>
 
-            <div class="spot-name">@VisibleEntry.PersonnelName</div>
-            <div class="spot-sub">@VisibleEntry.VerifyMode</div>
+                <div class="spot-details">
+                    <div class="spot-identity">
+                        <div class="spot-name">@VisibleEntry.PersonnelName</div>
+                        <div class="spot-sub">@VisibleEntry.VerifyMode</div>
+                    </div>
 
-            <div class="spot-meta">
-                <div><span>Access #</span> @VisibleEntry.AccessNumber</div>
-                <div><span>Device</span> @VisibleEntry.DeviceName</div>
-                <div><span>Event</span> @VisibleEntry.Event</div>
-                <div><span>EventAddress</span> @VisibleEntry.EventAddress</div>
-            </div>
+                    <dl class="spot-meta">
+                        <div><dt>Access #</dt><dd>@VisibleEntry.AccessNumber</dd></div>
+                        <div><dt>Device</dt><dd>@VisibleEntry.DeviceName</dd></div>
+                        <div><dt>Event</dt><dd>@VisibleEntry.Event</dd></div>
+                        <div><dt>Event address</dt><dd>@VisibleEntry.EventAddress</dd></div>
+                    </dl>
 
-            <div class="spot-sms">
-                <div class="spot-sms-label">SMS Status</div>
-                <div class="spot-sms-message">@VisibleEntry.SmsStatusMessage</div>
+                    <div class="spot-sms">
+                        <div class="spot-sms-label">SMS Status</div>
+                        <div class="spot-sms-message">@VisibleEntry.SmsStatusMessage</div>
+                    </div>
+                </div>
             </div>
         </div>
     }

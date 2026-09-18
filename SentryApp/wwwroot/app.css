@@ -91,8 +91,16 @@
   min-height:0;
 }
 
-.mon-left{ flex: 0 0 50%; }
-.mon-right{ flex: 1; display:flex; }
+.mon-left{
+  flex:0 0 calc(33.333% - 9px);
+  min-width:0;
+}
+
+.mon-right{
+  flex:1 1 calc(66.667% - 9px);
+  min-width:0;
+  display:flex;
+}
 
 .queue{
   height:100%;
@@ -337,61 +345,55 @@
 }
 
 .spot-body{
-  padding:22px;
-  text-align:center;
+  flex:1;
+  min-height:0;
+  padding:clamp(20px, 2vw, 36px);
+  display:flex;
+}
+
+.spot-content{
+  width:100%;
+  display:grid;
+  grid-template-columns:minmax(0, 3fr) minmax(260px, 2fr);
+  gap:clamp(24px, 3vw, 52px);
+  align-items:center;
 }
 
 .spot-photo-wrap{
-  width: min(720px, 94%);
-  margin: 18px auto 8px;
+  width:100%;
+  margin:0;
   background:#f1f2f4;
-  border-radius:8px;
-  padding:20px;
+  border-radius:12px;
+  padding:clamp(10px, 1vw, 18px);
+  box-sizing:border-box;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.025);
 }
 
 .spot-photo{
-  width: 100%;
-  height: auto;
-  max-height: 480px;
+  display:block;
+  width:100%;
+  height:auto;
+  max-height:calc(100vh - 210px);
+  aspect-ratio:4 / 3;
   object-fit:cover;
   border-radius:8px;
 }
 
-@media (min-width: 2400px){
-  .spot-photo-wrap{
-    width: 1200px;
-  }
-
-  .spot-photo{
-    max-height: 980px;
-  }
+.spot-details{
+  min-width:0;
+  text-align:left;
 }
 
-@media (min-width: 1200px){
-  .spot-photo-wrap{
-    width: 720px;
-  }
-
-  .spot-photo{
-    max-height: 520px;
-  }
-}
-
-@media (max-width: 768px){
-  .spot-photo-wrap{
-    width: 100%;
-    padding:16px;
-  }
-
-  .spot-photo{
-    max-height: 320px;
-  }
+.spot-identity{
+  padding-bottom:20px;
+  border-bottom:1px solid rgba(0,0,0,.08);
 }
 
 .spot-name{
-  margin-top:10px;
-  font-size:28px;
+  font-size:clamp(24px, 2vw, 34px);
   font-weight:900;
+  line-height:1.15;
+  overflow-wrap:anywhere;
 }
 
 .spot-sub{
@@ -400,26 +402,34 @@
 }
 
 .spot-meta{
-  margin: 18px auto 0;
-  max-width: 520px;
+  margin:24px 0 0;
   display:grid;
-  gap:10px;
-  text-align:left;
+  gap:14px;
   opacity:.9;
 }
 
-.spot-meta span{
-  display:inline-block;
-  width:120px;
+.spot-meta > div{
+  display:grid;
+  grid-template-columns:110px minmax(0, 1fr);
+  gap:12px;
+}
+
+.spot-meta dt{
   opacity:.65;
 }
 
+.spot-meta dd{
+  margin:0;
+  font-weight:600;
+  overflow-wrap:anywhere;
+}
+
 .spot-sms{
-  margin: 26px auto 0;
-  max-width: 520px;
-  padding-top: 16px;
+  margin:26px 0 0;
+  padding:18px;
   border-top: 1px solid rgba(0,0,0,.08);
-  text-align:left;
+  border-radius:8px;
+  background:var(--bg);
 }
 
 .spot-sms-label{
@@ -442,4 +452,25 @@
   padding:40px 22px;
   opacity:.7;
   text-align:center;
+}
+
+@media (max-width: 1200px){
+  .spot-content{
+    grid-template-columns:minmax(0, 3fr) minmax(240px, 2fr);
+  }
+}
+
+@media (max-width: 768px){
+  .mon-body{ padding:12px; }
+
+  .spot-body{ padding:16px; }
+
+  .spot-content{
+    grid-template-columns:1fr;
+    gap:22px;
+  }
+
+  .spot-photo{ max-height:none; }
+
+  .spot-name{ font-size:24px; }
 }
