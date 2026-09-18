@@ -25,6 +25,11 @@ public sealed class SmsModuleSender
     public SmsSendResult TrySend(string mobileNumber, string message)
     {
         var settings = NormalizeSettings(_configuration.GetSection("SmsModule").Get<SmsModuleSettings>() ?? new SmsModuleSettings());
+        if (!settings.Enabled)
+        {
+            return new SmsSendResult(false, "SMS sending is disabled.");
+        }
+
         var deviceSettings = BuildDeviceSettings(settings);
         var portName = deviceSettings.PortName;
         if (string.IsNullOrWhiteSpace(portName))
@@ -290,6 +295,7 @@ public sealed class SmsModuleSender
 
 public sealed class SmsModuleSettings
 {
+    public bool Enabled { get; set; } = true;
     public int? ComPort { get; set; }
     public int BaudRate { get; set; } = 9600;
     public int DataBits { get; set; } = 8;
