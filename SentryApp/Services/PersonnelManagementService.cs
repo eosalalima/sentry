@@ -85,9 +85,9 @@ public sealed class PersonnelManagementService
             WHERE {{StudentSearchClause}}
             """, pattern).SingleAsync(ct);
         var records = await db.Database.SqlQueryRaw<PersonnelManagementRecord>($$"""
-            SELECT COALESCE(Field01, '') AS IdNumber,
-                   COALESCE(Field02, '') AS LastName,
-                   COALESCE(Field03, '') AS FirstName,
+            SELECT COALESCE(CAST(Field01 AS nvarchar(max)), N'') AS IdNumber,
+                   COALESCE(CAST(Field02 AS nvarchar(max)), N'') AS LastName,
+                   COALESCE(CAST(Field03 AS nvarchar(max)), N'') AS FirstName,
                    Field04 AS MiddleInitial, Field06 AS Classification, [Field10] AS MobileNumber
             FROM [dbo].[MyDataTable]
             WHERE {{StudentSearchClause}}
@@ -106,9 +106,9 @@ public sealed class PersonnelManagementService
             WHERE {{StaffSearchClause}}
             """, pattern).SingleAsync(ct);
         var records = await db.Database.SqlQueryRaw<PersonnelManagementRecord>($$"""
-            SELECT COALESCE(Field01, '') AS IdNumber,
-                   COALESCE(Field02, '') AS LastName,
-                   COALESCE(Field03, '') AS FirstName,
+            SELECT COALESCE(CAST(Field01 AS nvarchar(max)), N'') AS IdNumber,
+                   COALESCE(CAST(Field02 AS nvarchar(max)), N'') AS LastName,
+                   COALESCE(CAST(Field03 AS nvarchar(max)), N'') AS FirstName,
                    Field04 AS MiddleInitial, Field05 AS Classification, Field13 AS MobileNumber
             FROM [dbo].[MyDataTable]
             WHERE {{StaffSearchClause}}
