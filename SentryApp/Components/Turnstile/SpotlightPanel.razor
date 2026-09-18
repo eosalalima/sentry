@@ -14,17 +14,17 @@
     else
     {
         <div class="spot-body">
+            <div class="spot-identity">
+                <div class="spot-name">@VisibleEntry.PersonnelName</div>
+                <div class="spot-sub">@VisibleEntry.VerifyMode</div>
+            </div>
+
             <div class="spot-content">
                 <div class="spot-photo-wrap">
                     <img class="spot-photo" src="@VisibleEntry.PhotoUrl" alt="Photo of @VisibleEntry.PersonnelName" />
                 </div>
 
                 <div class="spot-details">
-                    <div class="spot-identity">
-                        <div class="spot-name">@VisibleEntry.PersonnelName</div>
-                        <div class="spot-sub">@VisibleEntry.VerifyMode</div>
-                    </div>
-
                     <dl class="spot-meta">
                         <div><dt>Access #</dt><dd>@VisibleEntry.AccessNumber</dd></div>
                         <div><dt>Device</dt><dd>@VisibleEntry.DeviceName</dd></div>
