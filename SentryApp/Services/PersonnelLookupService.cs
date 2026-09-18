@@ -20,7 +20,7 @@ public sealed class PersonnelLookupService
         _logger = logger;
     }
 
-    public async Task<string?> GetMobileNumberAsync(string? accessNumber, CancellationToken ct)
+    public async Task<PersonnelLookupResult?> GetPersonnelAsync(string? accessNumber, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(accessNumber))
         {
@@ -33,21 +33,25 @@ public sealed class PersonnelLookupService
             await using var studentDb = await _studentDbFactory.CreateDbContextAsync(ct);
 
             var staffTask = staffDb.Database.SqlQueryRaw<PersonnelUnionRow>(@"
-SELECT Field13, Field15
+SELECT Field13 AS MobileNumber, Field05 AS Classification
 FROM [dbo].[MyDataTable]
 WHERE Field15 = {0}", accessNumber).ToListAsync(ct);
 
             var studentTask = studentDb.Database.SqlQueryRaw<PersonnelUnionRow>(@"
-SELECT Field13, Field15
+SELECT [Field10] AS MobileNumber, Field06 AS Classification
 FROM [dbo].[MyDataTable]
 WHERE Field15 = {0}", accessNumber).ToListAsync(ct);
 
             await Task.WhenAll(staffTask, studentTask);
 
-            return staffTask.Result
-                .Concat(studentTask.Result)
-                .Select(row => row.Field13)
-                .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+            var staff = staffTask.Result.FirstOrDefault();
+            if (staff is not null)
+                return new PersonnelLookupResult(staff.MobileNumber, staff.Classification, PersonnelKind.Staff);
+
+            var student = studentTask.Result.FirstOrDefault();
+            return student is null
+                ? null
+                : new PersonnelLookupResult(student.MobileNumber, student.Classification, PersonnelKind.Student);
         }
         catch (Exception ex)
         {
@@ -55,4 +59,15 @@ WHERE Field15 = {0}", accessNumber).ToListAsync(ct);
             return null;
         }
     }
+}
+
+public sealed record PersonnelLookupResult(
+    string? MobileNumber,
+    string? Classification,
+    PersonnelKind Kind);
+
+public enum PersonnelKind
+{
+    Student,
+    Staff
 }
