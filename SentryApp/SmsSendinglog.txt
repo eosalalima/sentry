@@ -133,3 +133,72 @@
 2026-09-13 08:37:56 | To: 9165006099 | Message: VILLANUEVA, JOHN CHRISTIAN has Logged OUT on 13-Sep-2026 08:37 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
 2026-09-13 08:38:14 | To: 09353719036 | Message: PABLO, VIRGINIA has Logged OUT on 13-Sep-2026 08:38 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
 2026-09-13 08:38:38 | To: 09360716329 | Message: TORRES, REYMOND has Logged IN on 13-Sep-2026 08:38 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-17 22:27:41 | To: 09061437167 | Message: SAMSON, KRISETTE has Logged OUT on 17-Sep-2026 10:27 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-17 22:27:51 | To: 09658104700 | Message: HERNANDEZ, RODRIGO has Logged OUT on 17-Sep-2026 10:27 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-17 22:29:39 | To: 0918207180 | Message: SALONGA, JOVITO has Logged IN on 17-Sep-2026 10:29 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 19:35:16 | To: 09631740381 | Message: SANTIAGO, JUNo has Logged IN on 18-Sep-2026 07:35 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 19:35:26 | To: 9557880879 | Message: SANCHEZ, CHRISTINE JIE has Logged OUT on 18-Sep-2026 07:35 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 19:36:36 | To: 09303542958 | Message: GONZALES, REGINA has Logged OUT on 18-Sep-2026 07:36 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 19:37:30 | To: 09212338541 | Message: SUMAIT, EDGARDO has Logged IN on 18-Sep-2026 07:37 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 19:38:12 | To: 09263732707 | Message: DELA CRUZ, TRACI ANNE has Logged OUT on 18-Sep-2026 07:38 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 19:38:38 | To: 0915-896-3892 | Message: UYTINGCO, ALLAN has Logged IN on 18-Sep-2026 07:38 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 19:38:42 | To: 9165006099 | Message: VILLANUEVA, JOHN CHRISTIAN has Logged OUT on 18-Sep-2026 07:38 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 19:40:40 | To: 09126737494 | Message: SABINO, JUSTINE VIC has Logged IN on 18-Sep-2026 07:40 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 19:40:42 | To: 09978372757 | Message: REYES, MARK RAVEN has Logged OUT on 18-Sep-2026 07:40 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 19:43:46 | To: 09750237740 | Message: MONTES, ROSENDO has Logged OUT on 18-Sep-2026 07:43 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:28:49 | To: 09851841584 | Message: PIOLO, TEST has Logged IN on 18-Sep-2026 08:28 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:29:48 | To: 09611399623 | Message: SINGIAN, SATURNINO has Logged OUT on 18-Sep-2026 08:29 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:30:02 | To: 09658104700 | Message: HERNANDEZ, RODRIGO has Logged OUT on 18-Sep-2026 08:29 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:31:18 | To: 09995254928 | Message: GALANG, ARIEL has Logged OUT on 18-Sep-2026 08:31 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:31:22 | To: 09202867650 | Message: RECTO JR., CLARITO has Logged OUT on 18-Sep-2026 08:31 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:37:48 | To: 09757174078 | Message: GALVEZ, JAYRON has Logged OUT on 18-Sep-2026 08:37 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:38:42 | To: 09934164173 | Message: PANGAN, EUROSE MAE has Logged OUT on 18-Sep-2026 08:38 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:39:06 | To: 09551156041 | Message: ABELLANOZA, BRIAN CHESTER has Logged OUT on 18-Sep-2026 08:39 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:51:56 | To: 09266267767 | Message: GOLOY, ELOISA JHOY has Logged OUT on 18-Sep-2026 08:51 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:52:06 | To: 09995250648 | Message: MAGLAQUI, EZEKIEL JOHN PAUL has Logged IN on 18-Sep-2026 08:52 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:52:16 | To: 09989964001 | Message: MAHILUM, ARMAND CESAR has Logged OUT on 18-Sep-2026 08:52 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:52:22 | To: 09639340903 | Message: PERIDA, FRANCIS CARLO has Logged OUT on 18-Sep-2026 08:52 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:52:32 | To: 09057300804 | Message: LOBRIGO, KATE ANE has Logged OUT on 18-Sep-2026 08:52 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:52:40 | To: 09056781897 | Message: MARIANO, LIZETTE has Logged IN on 18-Sep-2026 08:52 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:52:50 | To: 09758627568 | Message: CARLOS, MARK REI has Logged OUT on 18-Sep-2026 08:52 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:52:56 | To: 09266267767 | Message: GOLOY, ELOISA JHOY has Logged OUT on 18-Sep-2026 08:52 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:53:04 | To: 09608904123 | Message: MONLEON, RISEL has Logged OUT on 18-Sep-2026 08:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:53:10 | To: 09770567145 | Message: FUENTES, RYAN has Logged OUT on 18-Sep-2026 08:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:53:16 | To: 09944116570 | Message: CABAHIL, JHON CARLO has Logged OUT on 18-Sep-2026 08:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:53:26 | To: 09958464256 | Message: NALLOS, ANGELYN has Logged OUT on 18-Sep-2026 08:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:53:34 | To: 09120075282 | Message: DELA CRUZ, CHERIEDEL has Logged OUT on 18-Sep-2026 08:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:53:42 | To: 09309110963 | Message: MACARILAY, ALEJANDRA has Logged OUT on 18-Sep-2026 08:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:53:46 | To: 09552191478 | Message: FAJARDO, MYLENE has Logged IN on 18-Sep-2026 08:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:53:50 | To: 09454086010 | Message: DELA CRUZ, MARY JOSSAINE has Logged OUT on 18-Sep-2026 08:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:54:00 | To: 09155603752 | Message: ARNAIZ, JOMAR has Logged OUT on 18-Sep-2026 08:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:54:04 | To: 09566656882 | Message: CALI, LIANICA has Logged OUT on 18-Sep-2026 08:54 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:54:14 | To: 09958430018 | Message: LARGO, ARLENE has Logged OUT on 18-Sep-2026 08:54 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:54:30 | To: 09363211882 | Message: PANGILINAN, RENDELL has Logged OUT on 18-Sep-2026 08:54 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:54:36 | To: 09910433944 | Message: SALUNGA, JULIE ANN has Logged IN on 18-Sep-2026 08:54 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:54:46 | To: 09632523541 | Message: TOLENTINO, IRISH KIM has Logged OUT on 18-Sep-2026 08:54 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:54:56 | To: 09955567026 | Message: DE GUZMAN, XANDER has Logged OUT on 18-Sep-2026 08:54 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:00 | To: 09474464779 | Message: GARCIA, ANGELICA MARIE has Logged IN on 18-Sep-2026 08:54 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:03 | To: 09353719036 | Message: CAPATAN, CHLOEY has Logged OUT on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:05 | To: 09065671157 | Message: LOZANO, MADEL has Logged OUT on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:08 | To: 09270018649 | Message: MERANO, JACKELINE has Logged OUT on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:12 | To: 09361283589 | Message: ORTIZ, LOUELLA JESIREE has Logged OUT on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:14 | To: 09676093142 | Message: LIM, MICHAEL ANGELO has Logged OUT on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:22 | To: 09758565939 | Message: DE JESUS, JERICA JEMELYN has Logged OUT on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:24 | To: 09750689031 | Message: MERCEDES, JEFF CLARENCE has Logged IN on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:26 | To: 09532072587 | Message: ESTRELLA, RUBY LOU has Logged OUT on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:29 | To: 9560168078 | Message: DEL ROSARIO, DESIREE has Logged IN on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:31 | To: 09282280274 | Message: KATO, HIROKI has Logged IN on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:33 | To: 09307282067 | Message: STA MARIA, NICOLE ANNE has Logged IN on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:35 | To: 09069355597 | Message: VILLAJUAN, ANA-MARY has Logged OUT on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:37 | To: 09650836072 | Message: PANO, SARAH JANE has Logged OUT on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 20:55:46 | To: 09758932725 | Message: MENDOZA, ADRIAN has Logged IN on 18-Sep-2026 08:55 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 21:03:20 | To: 09350913531 | Message: PERIA, ARA JANE has Logged OUT on 18-Sep-2026 09:03 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 21:03:24 | To: 09707034500 | Message: VENDIVEL, ERIKA has Logged OUT on 18-Sep-2026 09:03 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 21:03:34 | To: 09975105783 | Message: GALANG, APRIL has Logged OUT on 18-Sep-2026 09:03 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 21:03:40 | To: 09611384460 | Message: PADRE, KATRINA NICOLE has Logged OUT on 18-Sep-2026 09:03 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 22:20:40 | To: 09935223714 | Message: OLEO, SAMMY has Logged OUT on 18-Sep-2026 10:20 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 22:20:42 | To: 09515192775 | Message: SUPAN, ANDREW has Logged OUT on 18-Sep-2026 10:20 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 22:20:45 | To: 09758206619 | Message: GAMBOA, LAVINIA has Logged IN on 18-Sep-2026 10:20 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 22:20:50 | To: 09956542012 | Message: DELA CRUZ, FRANCHESKA NICOLE has Logged IN on 18-Sep-2026 10:20 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-18 22:20:52 | To: 09673401936 | Message: PEREZ, YASMIN has Logged OUT on 18-Sep-2026 10:20 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
+2026-09-19 09:22:39 | To: 09977101920 | Message: MANZO, JOVHAN has Logged OUT on 19-Sep-2026 09:22 am * Auto-generated SMS - do not reply | Success: False | SMS send failed: The write timed out.
