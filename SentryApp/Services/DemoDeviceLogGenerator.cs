@@ -11,17 +11,20 @@ public sealed class DemoDeviceLogGenerator : BackgroundService
     private readonly IConfiguration _config;
     private readonly TurnstilePollingController _controller;
     private readonly ILogger<DemoDeviceLogGenerator> _logger;
+    private readonly MonitoringDataLogWriter _dataLogWriter;
     private readonly Random _random = new();
 
     public DemoDeviceLogGenerator(
         IDbContextFactory<AccessControlDbContext> dbFactory,
         IConfiguration config,
         TurnstilePollingController controller,
+        MonitoringDataLogWriter dataLogWriter,
         ILogger<DemoDeviceLogGenerator> logger)
     {
         _dbFactory = dbFactory;
         _config = config;
         _controller = controller;
+        _dataLogWriter = dataLogWriter;
         _logger = logger;
     }
 
@@ -73,11 +76,24 @@ public sealed class DemoDeviceLogGenerator : BackgroundService
         var recordDate = DateTime.Now.Date;
         var logType = LogTypes[_random.Next(LogTypes.Length)];
 
+        var id = Guid.NewGuid();
         await db.Database.ExecuteSqlInterpolatedAsync($@"
 INSERT INTO DeviceLogs
     (Id, DateCreated, IsDeleted, RecordDate, TimeLogStamp, AccessNumber, DeviceSerialNumber, CardNo, SiteCode, LinkId, Event, EventAddress, LogType, VerifyMode, [Index], HasMask, Temperature, IsNotified)
 VALUES
-    ({Guid.NewGuid()}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, { (string?)null }, { (int?)null }, {"20"}, {"1"}, {logType}, {"200"}, 0, { (bool?)null }, { (float?)null }, { (bool?)null });", ct);
+    ({id}, {now}, 0, {recordDate}, {now}, {accessNumber}, {deviceSerial}, {"TEST"}, { (string?)null }, { (int?)null }, {"20"}, {"1"}, {logType}, {"200"}, 0, { (bool?)null }, { (float?)null }, { (bool?)null });", ct);
+
+        await _dataLogWriter.LogGeneratedAsync(new
+        {
+            TimeLogId = id,
+            TimeLogStamp = now,
+            AccessNumber = accessNumber,
+            DeviceSerialNumber = deviceSerial,
+            LogType = logType,
+            Event = "20",
+            EventAddress = "1",
+            VerifyMode = "200"
+        }, ct);
     }
 
     private async Task<string?> PickRandomAsync(IQueryable<string> query, CancellationToken ct)

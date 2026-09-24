@@ -16,6 +16,7 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
     private readonly SmsModuleSender _smsSender;
     private readonly IConfiguration _config;
     private readonly ILogger<TurnstileLogPollingWorker> _logger;
+    private readonly MonitoringDataLogWriter _dataLogWriter;
     private readonly bool _flowDiagnosticsEnabled;
 
     private int _intervalMs;
@@ -38,6 +39,7 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         TurnstilePollingController controller,
         PersonnelLookupService personnelLookup,
         SmsModuleSender smsSender,
+        MonitoringDataLogWriter dataLogWriter,
         IConfiguration config,
         ILogger<TurnstileLogPollingWorker> logger)
     {
@@ -47,6 +49,7 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         _controller = controller;
         _personnelLookup = personnelLookup;
         _smsSender = smsSender;
+        _dataLogWriter = dataLogWriter;
         _config = config;
         _logger = logger;
         _flowDiagnosticsEnabled = _config.GetValue("TurnstilePolling:FlowDiagnosticsEnabled", false);
@@ -216,6 +219,7 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 _logger.LogInformation("Turnstile flow: new entry {EntryId} detected and pushed to spotlight.", entry.TimeLogId);
 
             _state.Push(entry);
+            await _dataLogWriter.LogPolledAsync(entry, ct);
 
             // Only acknowledge a row after all processing has completed. Advancing the
             // cursor before this point caused transient SMS/processing failures to drop
