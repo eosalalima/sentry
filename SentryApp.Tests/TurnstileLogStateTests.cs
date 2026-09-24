@@ -59,6 +59,44 @@ public class TurnstileLogStateTests
             item => Assert.Equal(older.TimeLogId, item.Entry.TimeLogId));
     }
 
+    [Fact]
+    public async Task Push_QueuesBurstSoEveryRecordIsShownInSpotlight()
+    {
+        using var state = CreateState(highlightMs: 75);
+        var entries = Enumerable.Range(0, 3)
+            .Select(_ => CreateEntry(Guid.NewGuid(), "IN"))
+            .ToList();
+        var displayedEntryIds = new List<Guid>();
+        var displayedEntryIdsLock = new object();
+
+        state.Changed += CaptureSpotlight;
+
+        foreach (var entry in entries)
+            state.Push(entry);
+
+        await EventuallyAsync(() =>
+        {
+            lock (displayedEntryIdsLock)
+                return displayedEntryIds.Count == entries.Count;
+        }, TimeSpan.FromSeconds(2));
+
+        lock (displayedEntryIdsLock)
+            Assert.Equal(entries.Select(entry => entry.TimeLogId), displayedEntryIds);
+
+        void CaptureSpotlight()
+        {
+            var spotlight = state.Spotlight;
+            if (spotlight is null)
+                return;
+
+            lock (displayedEntryIdsLock)
+            {
+                if (!displayedEntryIds.Contains(spotlight.TimeLogId))
+                    displayedEntryIds.Add(spotlight.TimeLogId);
+            }
+        }
+    }
+
     private static TurnstileLogState CreateState(int highlightMs)
     {
         var cfg = new ConfigurationBuilder()
