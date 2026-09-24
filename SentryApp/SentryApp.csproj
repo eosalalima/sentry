@@ -5,7 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
-    <DefaultItemExcludes>$(DefaultItemExcludes);publish/**</DefaultItemExcludes>
+    <!-- Keep generated deployment output from being rediscovered as source files. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);publish/**;artifacts/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <Target Name="CleanStaticWebAssetsCache" BeforeTargets="DefineStaticWebAssets">
