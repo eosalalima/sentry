@@ -167,6 +167,32 @@
                             @bind-value="_personnelItemsPerPage" @bind-value:event="oninput" disabled="@_isPollingActive" />
                         <div class="form-text">Controls the page size for both the Student and Staff lists (1–100).</div>
                     </div>
+
+                    <hr />
+                    <h6>Data log files</h6>
+                    <div class="form-check form-switch mt-3 mb-3">
+                        <input class="form-check-input" id="generatedDataLogging" type="checkbox" role="switch"
+                            @bind="_generatedDataLoggingEnabled" disabled="@_isPollingActive" />
+                        <label class="form-check-label" for="generatedDataLogging">Log generated data</label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="generatedDataLogFileName">Generated data log file name</label>
+                        <input class="form-control" id="generatedDataLogFileName" type="text"
+                            @bind="_generatedDataLogFileName" disabled="@_isPollingActive"
+                            placeholder="gendata.log" />
+                    </div>
+                    <div class="form-check form-switch mt-3 mb-3">
+                        <input class="form-check-input" id="polledDataLogging" type="checkbox" role="switch"
+                            @bind="_polledDataLoggingEnabled" disabled="@_isPollingActive" />
+                        <label class="form-check-label" for="polledDataLogging">Log polled data</label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="polledDataLogFileName">Polled data log file name</label>
+                        <input class="form-control" id="polledDataLogFileName" type="text"
+                            @bind="_polledDataLogFileName" disabled="@_isPollingActive"
+                            placeholder="polled.log" />
+                        <div class="form-text">Log files are written in the application folder. Paths are reduced to file names for safety.</div>
+                    </div>
                 </div>
 
                 <div class="modal-footer">
@@ -362,6 +388,10 @@
     private int _lookbackSecondsOnStart = 3;
     private int _maxRowsPerPoll = 20;
     private int _personnelItemsPerPage = 50;
+    private bool _generatedDataLoggingEnabled;
+    private string _generatedDataLogFileName = MonitoringDataLogWriter.DefaultGeneratedFileName;
+    private bool _polledDataLoggingEnabled;
+    private string _polledDataLogFileName = MonitoringDataLogWriter.DefaultPolledFileName;
     private bool _isSmsSendingEnabled = true;
     private int _smsComPortNumber = 1;
     private int _smsBaudRate = 9600;
@@ -421,6 +451,7 @@
         Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", 3));
         _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", 20);
         _personnelItemsPerPage = Configuration.GetValue("PersonnelManagement:ItemsPerPage", 50);
+        LoadDataLoggingFromConfiguration();
         _isSmsSendingEnabled = Configuration.GetValue("SmsModule:Enabled", true);
         _smsComPortNumber = Configuration.GetValue("SmsModule:ComPort", 1);
         _smsBaudRate = Configuration.GetValue("SmsModule:BaudRate", 9600);
@@ -493,6 +524,10 @@
             _lookbackSecondsOnStart = Math.Max(0, _lookbackSecondsOnStart);
             _maxRowsPerPoll = Math.Max(1, _maxRowsPerPoll);
             _personnelItemsPerPage = Math.Clamp(_personnelItemsPerPage, 1, 100);
+            _generatedDataLogFileName = MonitoringDataLogWriter.NormalizeFileName(
+                _generatedDataLogFileName, MonitoringDataLogWriter.DefaultGeneratedFileName);
+            _polledDataLogFileName = MonitoringDataLogWriter.NormalizeFileName(
+                _polledDataLogFileName, MonitoringDataLogWriter.DefaultPolledFileName);
             _smsComPortNumber = Math.Max(1, _smsComPortNumber);
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(_selectedDeviceSerial)
             ? AllDevicesValue
@@ -618,6 +653,7 @@
             Configuration.GetValue("TurnstilePolling:LookbackSecondsOnStart", _lookbackSecondsOnStart));
             _maxRowsPerPoll = Configuration.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
             _personnelItemsPerPage = Configuration.GetValue("PersonnelManagement:ItemsPerPage", _personnelItemsPerPage);
+            LoadDataLoggingFromConfiguration();
             _isSmsSendingEnabled = Configuration.GetValue("SmsModule:Enabled", _isSmsSendingEnabled);
             _smsComPortNumber = Configuration.GetValue("SmsModule:ComPort", _smsComPortNumber);
             _smsBaudRate = Configuration.GetValue("SmsModule:BaudRate", _smsBaudRate);
@@ -669,6 +705,12 @@
                         && TryReadJsonValue(personnelManagement["ItemsPerPage"], out int itemsPerPage))
                         _personnelItemsPerPage = itemsPerPage;
 
+                    if (root["DataLogging"] is JsonObject dataLogging)
+                    {
+                        ReadDataLogSettings(dataLogging["Generated"] as JsonObject, true);
+                        ReadDataLogSettings(dataLogging["Polled"] as JsonObject, false);
+                    }
+
                     if (root["SmsModule"] is JsonObject smsModule)
                     {
                         if (TryReadJsonValue(smsModule["Enabled"], out bool smsSendingEnabled))
@@ -716,6 +758,38 @@
         InvokeAsync(StateHasChanged);
     }
 
+    private void LoadDataLoggingFromConfiguration()
+    {
+        _generatedDataLoggingEnabled = Configuration.GetValue("DataLogging:Generated:Enabled", false);
+        _generatedDataLogFileName = Configuration.GetValue(
+            "DataLogging:Generated:FileName", MonitoringDataLogWriter.DefaultGeneratedFileName);
+        _polledDataLoggingEnabled = Configuration.GetValue("DataLogging:Polled:Enabled", false);
+        _polledDataLogFileName = Configuration.GetValue(
+            "DataLogging:Polled:FileName", MonitoringDataLogWriter.DefaultPolledFileName);
+    }
+
+    private void ReadDataLogSettings(JsonObject? settings, bool generated)
+    {
+        if (settings is null)
+            return;
+
+        if (TryReadJsonValue(settings["Enabled"], out bool enabled))
+        {
+            if (generated)
+                _generatedDataLoggingEnabled = enabled;
+            else
+                _polledDataLoggingEnabled = enabled;
+        }
+
+        if (TryReadJsonValue(settings["FileName"], out string? fileName) && fileName != null)
+        {
+            if (generated)
+                _generatedDataLogFileName = fileName;
+            else
+                _polledDataLogFileName = fileName;
+        }
+    }
+
     public void Dispose()
     {
         PollingController.StatusChanged -= OnPollingStatusChanged;
@@ -759,6 +833,20 @@
             root["PersonnelManagement"] ??= new JsonObject();
             if (root["PersonnelManagement"] is JsonObject personnelManagement)
                 personnelManagement["ItemsPerPage"] = _personnelItemsPerPage;
+
+            root["DataLogging"] = new JsonObject
+            {
+                ["Generated"] = new JsonObject
+                {
+                    ["Enabled"] = _generatedDataLoggingEnabled,
+                    ["FileName"] = _generatedDataLogFileName
+                },
+                ["Polled"] = new JsonObject
+                {
+                    ["Enabled"] = _polledDataLoggingEnabled,
+                    ["FileName"] = _polledDataLogFileName
+                }
+            };
 
             root["SmsModule"] ??= new JsonObject();
             if (root["SmsModule"] is JsonObject smsModule)

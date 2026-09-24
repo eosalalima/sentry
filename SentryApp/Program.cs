@@ -31,6 +31,7 @@ builder.Services.AddSingleton<IPhotoUrlBuilder, PhotoUrlBuilder>();
 builder.Services.AddSingleton<PersonnelLookupService>();
 builder.Services.AddSingleton<PersonnelManagementService>();
 builder.Services.AddSingleton<SmsModuleSender>();
+builder.Services.AddSingleton<MonitoringDataLogWriter>();
 builder.Services.AddHostedService<TurnstileLogPollingWorker>();
 builder.Services.AddHostedService<DemoDeviceLogGenerator>();
 
