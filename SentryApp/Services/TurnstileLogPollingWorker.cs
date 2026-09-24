@@ -27,6 +27,9 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
     private readonly Dictionary<Guid, DateTimeOffset> _seen = new();
 
     private Guid _lastId;
+    private DateTimeOffset _highWaterUtc;
+    private Guid _highWaterId;
+    private bool _isReplayScan;
 
     public TurnstileLogPollingWorker(
         IDbContextFactory<AccessControlDbContext> dbFactory,
@@ -58,7 +61,7 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _sinceUtc = DateTimeOffset.UtcNow.AddSeconds(-_lookbackSecondsOnStart);
+        ResetCursor();
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -150,7 +153,28 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
             .ToListAsync(ct);
 
         if (rows.Count == 0)
+        {
+            if (_isReplayScan)
+            {
+                // The high-water row may have been deleted while the replay was in
+                // progress. Resume from the last acknowledged position rather than
+                // remaining stuck in replay mode.
+                _sinceUtc = _highWaterUtc;
+                _lastId = _highWaterId;
+                _isReplayScan = false;
+            }
+            else
+            {
+                // Re-scan the lookback window after catching up. A timestamp cursor
+                // alone misses rows that are committed late with a timestamp behind
+                // the cursor (or the same timestamp and a lower GUID).
+                _sinceUtc = _highWaterUtc.AddSeconds(-_lookbackSecondsOnStart);
+                _lastId = Guid.Empty;
+                _isReplayScan = true;
+            }
+
             return;
+        }
 
         foreach (var row in rows)
         {
@@ -160,6 +184,7 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                     _logger.LogInformation("Turnstile flow: duplicate row {EntryId} ignored in poll cycle.", row.TimeLogId);
 
                 AdvanceCursor(row);
+                FinishReplayAtHighWater(row);
                 continue;
             }
 
@@ -197,6 +222,14 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
             // the entire fetched batch permanently.
             _seen[row.TimeLogId] = DateTimeOffset.UtcNow;
             AdvanceCursor(row);
+
+            if (!_isReplayScan)
+            {
+                _highWaterUtc = row.TimeLogStamp;
+                _highWaterId = row.TimeLogId;
+            }
+
+            FinishReplayAtHighWater(row);
         }
     }
 
@@ -204,6 +237,16 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
     {
         _sinceUtc = row.TimeLogStamp;
         _lastId = row.TimeLogId;
+    }
+
+    private void FinishReplayAtHighWater(TurnstileLogRow row)
+    {
+        if (_isReplayScan
+            && row.TimeLogStamp == _highWaterUtc
+            && row.TimeLogId == _highWaterId)
+        {
+            _isReplayScan = false;
+        }
     }
 
     private string SendEntrySms(TurnstileLogRow row, string? mobileNumber)
@@ -306,8 +349,10 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
 
     private void CleanupSeen()
     {
-        // keep "seen" only for a short window so the dictionary doesn't grow forever
-        var cutoff = DateTimeOffset.UtcNow.AddMinutes(-1);
+        // Keep IDs for at least the complete replay window. Otherwise a long
+        // lookback would cause acknowledged rows to be emitted again.
+        var retention = TimeSpan.FromSeconds(Math.Max(_lookbackSecondsOnStart, 60));
+        var cutoff = DateTimeOffset.UtcNow.Subtract(retention);
         var oldKeys = _seen.Where(kvp => kvp.Value < cutoff).Select(kvp => kvp.Key).ToList();
         foreach (var k in oldKeys)
             _seen.Remove(k);
@@ -321,7 +366,15 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
         _lookbackSecondsOnStart = _config.GetValue("TurnstilePolling:LookbackSecondsOntart", _config.GetValue("TurnstilePolling:LookbackSecondsOnStart", _lookbackSecondsOnStart));
         _maxRowsPerPoll = _config.GetValue("TurnstilePolling:MaxRowsPerPoll", _maxRowsPerPoll);
 
+        ResetCursor();
+    }
+
+    private void ResetCursor()
+    {
         _sinceUtc = DateTimeOffset.UtcNow.AddSeconds(-_lookbackSecondsOnStart);
         _lastId = Guid.Empty;
+        _highWaterUtc = _sinceUtc;
+        _highWaterId = Guid.Empty;
+        _isReplayScan = false;
     }
 }

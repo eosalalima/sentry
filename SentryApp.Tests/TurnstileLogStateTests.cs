@@ -39,6 +39,26 @@ public class TurnstileLogStateTests
         Assert.Contains(ids[^1], inEntries);
     }
 
+    [Fact]
+    public async Task QueueSnapshot_OrdersLatestRecordsFirst()
+    {
+        using var state = CreateState(highlightMs: 1);
+        var older = CreateEntry(Guid.NewGuid(), "IN", DateTimeOffset.UtcNow.AddMinutes(-1));
+        var latest = CreateEntry(Guid.NewGuid(), "IN", DateTimeOffset.UtcNow);
+
+        // Push out of timestamp order to ensure the snapshot order comes from the
+        // device log timestamp rather than task scheduling or insertion order.
+        state.Push(latest);
+        state.Push(older);
+
+        await EventuallyAsync(() => state.QueueSnapshot.Count == 2, TimeSpan.FromSeconds(2));
+
+        Assert.Collection(
+            state.QueueSnapshot,
+            item => Assert.Equal(latest.TimeLogId, item.Entry.TimeLogId),
+            item => Assert.Equal(older.TimeLogId, item.Entry.TimeLogId));
+    }
+
     private static TurnstileLogState CreateState(int highlightMs)
     {
         var cfg = new ConfigurationBuilder()
@@ -51,10 +71,13 @@ public class TurnstileLogStateTests
         return new TurnstileLogState(cfg, NullLogger<TurnstileLogState>.Instance);
     }
 
-    private static TurnstileLogEntry CreateEntry(Guid id, string logType) => new()
+    private static TurnstileLogEntry CreateEntry(
+        Guid id,
+        string logType,
+        DateTimeOffset? timeLogStamp = null) => new()
     {
         TimeLogId = id,
-        TimeLogStamp = DateTimeOffset.UtcNow,
+        TimeLogStamp = timeLogStamp ?? DateTimeOffset.UtcNow,
         LogType = logType,
         PersonnelName = "Test"
     };

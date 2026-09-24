@@ -29,7 +29,10 @@ public sealed class TurnstileLogState : IDisposable
         get
         {
             lock (_lock)
-                return _queue.ToList();
+                return _queue
+                    .OrderByDescending(item => item.Entry.TimeLogStamp)
+                    .ThenByDescending(item => item.EnqueuedAt)
+                    .ToList();
         }
     }
 
