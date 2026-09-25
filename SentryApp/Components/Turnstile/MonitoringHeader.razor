@@ -107,6 +107,12 @@
                     </div>
 
                     <div class="form-check form-switch mt-3 mb-3">
+                        <input class="form-check-input" id="smsSendingEnabled" type="checkbox" role="switch"
+                            @bind="SmsSendingEnabled" disabled="@_isPollingActive" />
+                        <label class="form-check-label" for="smsSendingEnabled">SMS Sending</label>
+                        <div class="form-text">Toggle off to disable SMS notifications and SMS logging.</div>
+                    </div>
+                    <div class="form-check form-switch mt-3 mb-3">
                         <input class="form-check-input" id="smsLoggingEnabled" type="checkbox" role="switch"
                             @bind="_isSmsLoggingEnabled" disabled="@(_isPollingActive || !_isSmsSendingEnabled)" />
                         <label class="form-check-label" for="smsLoggingEnabled">SMS Logging</label>
@@ -116,12 +122,6 @@
                         <label class="form-label" for="smsLogFileName">SMS log file name</label>
                         <input class="form-control" id="smsLogFileName" type="text" @bind="_smsLogFileName"
                             disabled="@(_isPollingActive || !_isSmsLoggingEnabled)" placeholder="SmsSendinglog.txt" />
-                    </div>
-                    <div class="form-check form-switch mt-3 mb-3">
-                        <input class="form-check-input" id="smsSendingEnabled" type="checkbox" role="switch"
-                            @bind="SmsSendingEnabled" disabled="@_isPollingActive" />
-                        <label class="form-check-label" for="smsSendingEnabled">SMS Sending</label>
-                        <div class="form-text">Toggle off to disable SMS notifications and SMS logging.</div>
                     </div>
 
                     <div class="mb-3">
