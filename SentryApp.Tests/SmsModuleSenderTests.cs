@@ -39,6 +39,23 @@ public sealed class SmsModuleSenderTests
     }
 
     [Fact]
+    public void CheckModule_WhenConfigurationFails_CompletesEveryProgressItem()
+    {
+        var configuration = new ConfigurationBuilder().Build();
+        var sender = new SmsModuleSender(configuration, new TestWebHostEnvironment(), NullLogger<SmsModuleSender>.Instance);
+        var updates = new List<SmsModuleCheckUpdate>();
+
+        var result = sender.CheckModule(
+            new SmsModuleSettings { Enabled = true, ComPort = null },
+            updates.Add);
+
+        Assert.False(result.Success);
+        Assert.Equal(SmsModuleCheck.All, updates.Select(update => update.Check));
+        Assert.All(updates, update => Assert.False(update.Success));
+        Assert.Contains("not configured", updates[0].Detail, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void TrySend_WhenLoggingIsEnabled_CreatesConfiguredLogForValidationFailure()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));

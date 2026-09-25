@@ -1,0 +1,27 @@
+.sms-check-list {
+    display: grid;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sms-check-item {
+    display: grid;
+    grid-template-columns: auto minmax(1rem, 1fr) auto;
+    align-items: center;
+    column-gap: .5rem;
+}
+
+.sms-check-dots {
+    align-self: end;
+    margin-bottom: .35rem;
+    border-bottom: 2px dotted var(--bs-border-color);
+}
+
+.sms-check-detail {
+    grid-column: 1 / -1;
+    margin-top: .25rem;
+    color: var(--bs-secondary-color);
+    font-size: .875rem;
+}
