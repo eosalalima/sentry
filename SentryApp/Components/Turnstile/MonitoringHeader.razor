@@ -12,6 +12,7 @@
 @using SentryApp.Services
 @implements IDisposable
 @inject NavigationManager Navigation
+@inject SmsModuleSender SmsSender
 
 <div class="mon-header">
     <div class="mon-brand">
@@ -106,10 +107,21 @@
                     </div>
 
                     <div class="form-check form-switch mt-3 mb-3">
+                        <input class="form-check-input" id="smsLoggingEnabled" type="checkbox" role="switch"
+                            @bind="_isSmsLoggingEnabled" disabled="@(_isPollingActive || !_isSmsSendingEnabled)" />
+                        <label class="form-check-label" for="smsLoggingEnabled">SMS Logging</label>
+                        <div class="form-text">Log the result of each SMS sending attempt.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="smsLogFileName">SMS log file name</label>
+                        <input class="form-control" id="smsLogFileName" type="text" @bind="_smsLogFileName"
+                            disabled="@(_isPollingActive || !_isSmsLoggingEnabled)" placeholder="SmsSendinglog.txt" />
+                    </div>
+                    <div class="form-check form-switch mt-3 mb-3">
                         <input class="form-check-input" id="smsSendingEnabled" type="checkbox" role="switch"
-                            @bind="_isSmsSendingEnabled" disabled="@_isPollingActive" />
+                            @bind="SmsSendingEnabled" disabled="@_isPollingActive" />
                         <label class="form-check-label" for="smsSendingEnabled">SMS Sending</label>
-                        <div class="form-text">Toggle off to disable SMS notifications.</div>
+                        <div class="form-text">Toggle off to disable SMS notifications and SMS logging.</div>
                     </div>
 
                     <div class="mt-3 mb-3">
@@ -118,8 +130,10 @@
                             <input class="form-control" id="smsComPort" type="number" min="1" step="1"
                                 @bind-value="_smsComPortNumber" @bind-value:event="oninput" disabled="@_isPollingActive"
                                 placeholder="e.g. 3" />
+                            <button class="btn btn-outline-secondary" type="button" @onclick="CheckSmsModuleAsync"
+                                disabled="@(_isPollingActive || !_isSmsSendingEnabled || _isCheckingSmsModule)">Check SMS Module</button>
                             <button class="btn btn-outline-secondary" type="button" @onclick="OpenSmsTestModal"
-                                disabled="@_isPollingActive">Send test message</button>
+                                disabled="@(_isPollingActive || !_isSmsSendingEnabled)">Send test message</button>
                             <button class="btn btn-outline-secondary" type="button" @onclick="OpenSmsConfigModal"
                                 disabled="@_isPollingActive">SMS Config</button>
                         </div>
@@ -393,6 +407,9 @@
     private bool _polledDataLoggingEnabled;
     private string _polledDataLogFileName = MonitoringDataLogWriter.DefaultPolledFileName;
     private bool _isSmsSendingEnabled = true;
+    private bool _isSmsLoggingEnabled;
+    private string _smsLogFileName = SmsModuleSender.DefaultLogFileName;
+    private bool _isCheckingSmsModule;
     private int _smsComPortNumber = 1;
     private int _smsBaudRate = 9600;
     private int _smsDataBits = 8;
@@ -453,6 +470,8 @@
         _personnelItemsPerPage = Configuration.GetValue("PersonnelManagement:ItemsPerPage", 50);
         LoadDataLoggingFromConfiguration();
         _isSmsSendingEnabled = Configuration.GetValue("SmsModule:Enabled", true);
+        _isSmsLoggingEnabled = _isSmsSendingEnabled && Configuration.GetValue("SmsModule:LoggingEnabled", false);
+        _smsLogFileName = Configuration.GetValue("SmsModule:LogFileName", SmsModuleSender.DefaultLogFileName);
         _smsComPortNumber = Configuration.GetValue("SmsModule:ComPort", 1);
         _smsBaudRate = Configuration.GetValue("SmsModule:BaudRate", 9600);
         _smsDataBits = Configuration.GetValue("SmsModule:DataBits", 8);
@@ -529,6 +548,8 @@
             _polledDataLogFileName = MonitoringDataLogWriter.NormalizeFileName(
                 _polledDataLogFileName, MonitoringDataLogWriter.DefaultPolledFileName);
             _smsComPortNumber = Math.Max(1, _smsComPortNumber);
+            _isSmsLoggingEnabled &= _isSmsSendingEnabled;
+            _smsLogFileName = NormalizeLogFileName(_smsLogFileName);
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(_selectedDeviceSerial)
             ? AllDevicesValue
             : _selectedDeviceSerial;
@@ -546,6 +567,41 @@
         {
             Console.Error.WriteLine($"Failed to save settings: {ex}");
         }
+    }
+
+    private async Task CheckSmsModuleAsync()
+    {
+        if (_isCheckingSmsModule)
+            return;
+
+        NormalizeSmsModuleSettings();
+        _isCheckingSmsModule = true;
+        try
+        {
+            var result = await Task.Run(() => SmsSender.CheckModule(BuildSmsModuleSettings()));
+            await ShowToastAsync(result.Response, result.Success ? "success" : "danger");
+        }
+        finally
+        {
+            _isCheckingSmsModule = false;
+        }
+    }
+
+    private bool SmsSendingEnabled
+    {
+        get => _isSmsSendingEnabled;
+        set
+        {
+            _isSmsSendingEnabled = value;
+            if (!value)
+                _isSmsLoggingEnabled = false;
+        }
+    }
+
+    private static string NormalizeLogFileName(string? fileName)
+    {
+        var normalized = Path.GetFileName(fileName?.Trim());
+        return string.IsNullOrWhiteSpace(normalized) ? SmsModuleSender.DefaultLogFileName : normalized;
     }
 
     private void OpenSmsTestModal()
@@ -603,15 +659,8 @@
 
         try
         {
-            var portName = $"COM{_smsComPortNumber}";
-            if (!SerialPort.GetPortNames().Any(port => string.Equals(port, portName, StringComparison.OrdinalIgnoreCase)))
-            {
-                await ShowToastAsync($"No device detected on {portName}.", "danger");
-                return;
-            }
-
-            var smsSettings = BuildSmsModuleSettings();
-            var result = await Task.Run(() => SendSms(portName, _smsTestMobileNumber, _smsTestMessage, smsSettings));
+            var settings = BuildSmsModuleSettings();
+            var result = await Task.Run(() => SmsSender.TrySend(_smsTestMobileNumber, _smsTestMessage, settings));
 
             if (result.Success)
             {
@@ -655,6 +704,8 @@
             _personnelItemsPerPage = Configuration.GetValue("PersonnelManagement:ItemsPerPage", _personnelItemsPerPage);
             LoadDataLoggingFromConfiguration();
             _isSmsSendingEnabled = Configuration.GetValue("SmsModule:Enabled", _isSmsSendingEnabled);
+            _isSmsLoggingEnabled = _isSmsSendingEnabled && Configuration.GetValue("SmsModule:LoggingEnabled", _isSmsLoggingEnabled);
+            _smsLogFileName = Configuration.GetValue("SmsModule:LogFileName", _smsLogFileName);
             _smsComPortNumber = Configuration.GetValue("SmsModule:ComPort", _smsComPortNumber);
             _smsBaudRate = Configuration.GetValue("SmsModule:BaudRate", _smsBaudRate);
             _smsDataBits = Configuration.GetValue("SmsModule:DataBits", _smsDataBits);
@@ -715,6 +766,10 @@
                     {
                         if (TryReadJsonValue(smsModule["Enabled"], out bool smsSendingEnabled))
                             _isSmsSendingEnabled = smsSendingEnabled;
+                        if (TryReadJsonValue(smsModule["LoggingEnabled"], out bool smsLoggingEnabled))
+                            _isSmsLoggingEnabled = _isSmsSendingEnabled && smsLoggingEnabled;
+                        if (TryReadJsonValue(smsModule["LogFileName"], out string? smsLogFileName) && smsLogFileName != null)
+                            _smsLogFileName = smsLogFileName;
                         if (TryReadJsonValue(smsModule["ComPort"], out int comPort))
                             _smsComPortNumber = comPort;
                         if (TryReadJsonValue(smsModule["BaudRate"], out int baudRate))
@@ -852,6 +907,8 @@
             if (root["SmsModule"] is JsonObject smsModule)
             {
                 smsModule["Enabled"] = _isSmsSendingEnabled;
+                smsModule["LoggingEnabled"] = _isSmsLoggingEnabled;
+                smsModule["LogFileName"] = _smsLogFileName;
                 smsModule["ComPort"] = _smsComPortNumber;
             }
 
@@ -994,123 +1051,21 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private static SmsSendResult SendSms(string portName, string mobileNumber, string message, SmsModuleSettings settings)
+    private SentryApp.Services.SmsModuleSettings BuildSmsModuleSettings() => new()
     {
-        using var port = new SerialPort(portName, settings.BaudRate, settings.Parity, settings.DataBits,
-        settings.StopBits)
-        {
-            Handshake = settings.Handshake,
-            ReadTimeout = settings.ReadTimeout,
-            WriteTimeout = settings.WriteTimeout,
-            NewLine = settings.NewLine
-        };
-
-        try
-        {
-            port.Open();
-            SendCommand(port, "AT");
-            SendCommand(port, "AT+CMGF=1");
-            SendCommand(port, "AT+CMEE=1");
-
-            port.WriteLine($"AT+CMGS=\"{mobileNumber}\"");
-            var prompt = ReadUntilPrompt(port);
-            if (prompt.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
-            {
-                return new SmsSendResult(false, prompt);
-            }
-
-            port.Write(message + char.ConvertFromUtf32(26));
-            var response = ReadResponse(port);
-            var success = response.Contains("OK", StringComparison.OrdinalIgnoreCase);
-            return new SmsSendResult(success, response);
-        }
-        catch (Exception ex)
-        {
-            return new SmsSendResult(false, $"SMS send failed: {ex.Message}");
-        }
-    }
-
-    private static string SendCommand(SerialPort port, string command)
-    {
-        port.WriteLine(command);
-        return ReadResponse(port);
-    }
-
-    private static string ReadResponse(SerialPort port)
-    {
-        var buffer = new StringBuilder();
-        var stopAt = DateTime.UtcNow.AddMilliseconds(port.ReadTimeout);
-
-        while (DateTime.UtcNow < stopAt)
-        {
-            try
-            {
-                var chunk = port.ReadExisting();
-                if (!string.IsNullOrEmpty(chunk))
-                {
-                    buffer.Append(chunk);
-                    if (buffer.ToString().Contains("OK", StringComparison.OrdinalIgnoreCase) ||
-                    buffer.ToString().Contains("ERROR", StringComparison.OrdinalIgnoreCase))
-                    {
-                        break;
-                    }
-                }
-            }
-            catch (TimeoutException)
-            {
-                break;
-            }
-
-            Thread.Sleep(100);
-        }
-
-        return buffer.Length == 0 ? "No response received." : buffer.ToString();
-    }
-
-    private static string ReadUntilPrompt(SerialPort port)
-    {
-        var buffer = new StringBuilder();
-        var stopAt = DateTime.UtcNow.AddMilliseconds(port.ReadTimeout);
-
-        while (DateTime.UtcNow < stopAt)
-        {
-            try
-            {
-                var chunk = port.ReadExisting();
-                if (!string.IsNullOrEmpty(chunk))
-                {
-                    buffer.Append(chunk);
-                    var current = buffer.ToString();
-                    if (current.Contains(">", StringComparison.OrdinalIgnoreCase) ||
-                    current.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
-                    {
-                        break;
-                    }
-                }
-            }
-            catch (TimeoutException)
-            {
-                break;
-            }
-
-            Thread.Sleep(100);
-        }
-
-        return buffer.Length == 0 ? "No response received." : buffer.ToString();
-    }
-
-    private SmsModuleSettings BuildSmsModuleSettings()
-    {
-        return new SmsModuleSettings(
-            Math.Max(1, _smsBaudRate),
-            Math.Max(5, _smsDataBits),
-            ParseSmsParity(_smsParity),
-            ParseSmsStopBits(_smsStopBits),
-            ParseSmsHandshake(_smsHandshake),
-            Math.Max(1, _smsReadTimeoutMs),
-            Math.Max(1, _smsWriteTimeoutMs),
-            string.IsNullOrWhiteSpace(_smsNewLine) ? "\r\n" : _smsNewLine);
-    }
+        Enabled = _isSmsSendingEnabled,
+        LoggingEnabled = _isSmsLoggingEnabled,
+        LogFileName = NormalizeLogFileName(_smsLogFileName),
+        ComPort = _smsComPortNumber,
+        BaudRate = Math.Max(1, _smsBaudRate),
+        DataBits = Math.Max(5, _smsDataBits),
+        Parity = _smsParity,
+        StopBits = _smsStopBits,
+        Handshake = _smsHandshake,
+        ReadTimeout = Math.Max(1, _smsReadTimeoutMs),
+        WriteTimeout = Math.Max(1, _smsWriteTimeoutMs),
+        NewLine = string.IsNullOrWhiteSpace(_smsNewLine) ? "\r\n" : _smsNewLine
+    };
 
     private void NormalizeSmsModuleSettings()
     {
@@ -1156,17 +1111,6 @@
 
     private static Handshake ParseSmsHandshake(string value)
         => Enum.TryParse(value, true, out Handshake parsed) ? parsed : Handshake.None;
-
-    private sealed record SmsSendResult(bool Success, string Response);
-    private sealed record SmsModuleSettings(
-        int BaudRate,
-        int DataBits,
-        Parity Parity,
-        StopBits StopBits,
-        Handshake Handshake,
-        int ReadTimeout,
-        int WriteTimeout,
-        string NewLine);
 
     private static bool TryReadJsonValue<T>(JsonNode? node, out T value)
     {

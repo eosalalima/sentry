@@ -26,6 +26,49 @@ public sealed class SmsModuleSenderTests
         Assert.Equal("SMS sending is disabled.", result.Response);
     }
 
+    [Fact]
+    public void CheckModule_WhenSmsSendingIsDisabled_ReturnsTheConfigurationError()
+    {
+        var configuration = new ConfigurationBuilder().Build();
+        var sender = new SmsModuleSender(configuration, new TestWebHostEnvironment(), NullLogger<SmsModuleSender>.Instance);
+
+        var result = sender.CheckModule(new SmsModuleSettings { Enabled = false, ComPort = 1 });
+
+        Assert.False(result.Success);
+        Assert.Equal("SMS sending is disabled.", result.Response);
+    }
+
+    [Fact]
+    public void TrySend_WhenLoggingIsEnabled_CreatesConfiguredLogForValidationFailure()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var configuration = new ConfigurationBuilder().Build();
+            var environment = new TestWebHostEnvironment { ContentRootPath = root };
+            var sender = new SmsModuleSender(configuration, environment, NullLogger<SmsModuleSender>.Instance);
+            var settings = new SmsModuleSettings
+            {
+                Enabled = true,
+                LoggingEnabled = true,
+                LogFileName = "custom-sms.log",
+                ComPort = null
+            };
+
+            var result = sender.TrySend("09171234567", "Test message", settings);
+
+            Assert.False(result.Success);
+            var log = File.ReadAllText(Path.Combine(root, "custom-sms.log"));
+            Assert.Contains("09171234567", log);
+            Assert.Contains("SMS module COM port is not configured.", log);
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
     private sealed class TestWebHostEnvironment : IWebHostEnvironment
     {
         public string ApplicationName { get; set; } = "SentryApp.Tests";
