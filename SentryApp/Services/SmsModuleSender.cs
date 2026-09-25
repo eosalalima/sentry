@@ -7,6 +7,7 @@ namespace SentryApp.Services;
 
 public sealed class SmsModuleSender
 {
+    public const string DefaultLogFileName = "SmsSendinglog.txt";
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<SmsModuleSender> _logger;
@@ -25,6 +26,12 @@ public sealed class SmsModuleSender
     public SmsSendResult TrySend(string mobileNumber, string message)
     {
         var settings = NormalizeSettings(_configuration.GetSection("SmsModule").Get<SmsModuleSettings>() ?? new SmsModuleSettings());
+        return TrySend(mobileNumber, message, settings);
+    }
+
+    public SmsSendResult TrySend(string mobileNumber, string message, SmsModuleSettings settings)
+    {
+        settings = NormalizeSettings(settings);
         if (!settings.Enabled)
         {
             return new SmsSendResult(false, "SMS sending is disabled.");
@@ -35,20 +42,49 @@ public sealed class SmsModuleSender
         if (string.IsNullOrWhiteSpace(portName))
         {
             var result = new SmsSendResult(false, "SMS module COM port is not configured.");
-            LogSmsStatus(mobileNumber, message, result);
+            LogSmsStatus(mobileNumber, message, result, settings);
             return result;
         }
 
         if (string.IsNullOrWhiteSpace(mobileNumber))
         {
             var result = new SmsSendResult(false, "SMS recipient mobile number is missing.");
-            LogSmsStatus(mobileNumber, message, result);
+            LogSmsStatus(mobileNumber, message, result, settings);
             return result;
         }
 
         var sendResult = SendSms(deviceSettings, mobileNumber, message);
-        LogSmsStatus(mobileNumber, message, sendResult);
+        LogSmsStatus(mobileNumber, message, sendResult, settings);
         return sendResult;
+    }
+
+    public SmsSendResult CheckModule(SmsModuleSettings settings)
+    {
+        settings = NormalizeSettings(settings);
+        if (!settings.Enabled)
+            return new SmsSendResult(false, "SMS sending is disabled.");
+
+        var deviceSettings = BuildDeviceSettings(settings);
+        if (string.IsNullOrWhiteSpace(deviceSettings.PortName))
+            return new SmsSendResult(false, "SMS module COM port is not configured.");
+
+        using var port = CreateSerialPort(deviceSettings);
+        try
+        {
+            port.Open();
+            foreach (var command in new[] { "AT", "AT+CMGF=1", "AT+CMEE=1" })
+            {
+                var response = SendCommand(port, command);
+                if (!response.Contains("OK", StringComparison.OrdinalIgnoreCase))
+                    return new SmsSendResult(false, DescribeFailure(response));
+            }
+
+            return new SmsSendResult(true, "SMS Module is ok, ready to send message!");
+        }
+        catch (Exception ex)
+        {
+            return new SmsSendResult(false, $"SMS module check failed: {ex.Message}");
+        }
     }
 
     private static string BuildPortName(int? portNumber)
@@ -63,14 +99,7 @@ public sealed class SmsModuleSender
 
     private static SmsSendResult SendSms(SmsDeviceSettings deviceSettings, string mobileNumber, string message)
     {
-        using var port = new SerialPort(deviceSettings.PortName, deviceSettings.BaudRate, deviceSettings.Parity, deviceSettings.DataBits, deviceSettings.StopBits)
-        {
-            Handshake = deviceSettings.Handshake,
-            ReadTimeout = deviceSettings.ReadTimeout,
-            WriteTimeout = deviceSettings.WriteTimeout,
-            NewLine = deviceSettings.NewLine
-        };
-
+        using var port = CreateSerialPort(deviceSettings);
         try
         {
             port.Open();
@@ -114,6 +143,15 @@ public sealed class SmsModuleSender
             return new SmsSendResult(false, $"SMS send failed: {ex.Message}");
         }
     }
+
+    private static SerialPort CreateSerialPort(SmsDeviceSettings deviceSettings) =>
+        new(deviceSettings.PortName, deviceSettings.BaudRate, deviceSettings.Parity, deviceSettings.DataBits, deviceSettings.StopBits)
+        {
+            Handshake = deviceSettings.Handshake,
+            ReadTimeout = deviceSettings.ReadTimeout,
+            WriteTimeout = deviceSettings.WriteTimeout,
+            NewLine = deviceSettings.NewLine
+        };
 
     private static string SendCommand(SerialPort port, string command)
     {
@@ -266,8 +304,11 @@ public sealed class SmsModuleSender
         return false;
     }
 
-    private void LogSmsStatus(string mobileNumber, string message, SmsSendResult result)
+    private void LogSmsStatus(string mobileNumber, string message, SmsSendResult result, SmsModuleSettings settings)
     {
+        if (!settings.Enabled || !settings.LoggingEnabled)
+            return;
+
         try
         {
             var timestamp = DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -279,7 +320,10 @@ public sealed class SmsModuleSender
                 ? "No response returned."
                 : result.Response.Replace("\r", " ").Replace("\n", " ").Trim();
             var line = $"{timestamp} | To: {recipient} | Message: {messageBody} | Success: {result.Success} | {response}";
-            var logPath = Path.Combine(_environment.ContentRootPath, "SmsSendinglog.txt");
+            var fileName = Path.GetFileName(settings.LogFileName);
+            if (string.IsNullOrWhiteSpace(fileName))
+                fileName = DefaultLogFileName;
+            var logPath = Path.Combine(_environment.ContentRootPath, fileName);
 
             lock (_logLock)
             {
@@ -305,6 +349,8 @@ public sealed class SmsModuleSettings
     public int ReadTimeout { get; set; } = 2000;
     public int WriteTimeout { get; set; } = 2000;
     public string NewLine { get; set; } = "\r\n";
+    public bool LoggingEnabled { get; set; }
+    public string LogFileName { get; set; } = SmsModuleSender.DefaultLogFileName;
 }
 
 public sealed record SmsDeviceSettings(
