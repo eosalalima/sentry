@@ -255,21 +255,29 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
 
     private string SendEntrySms(TurnstileLogRow row, string? mobileNumber)
     {
-        if (string.IsNullOrWhiteSpace(mobileNumber))
+        var isLiveMode = _config.GetValue("IsLiveMode", true);
+        var recipient = SmsRecipientResolver.Resolve(
+            isLiveMode,
+            mobileNumber,
+            _config.GetValue<string>("SmsModule:DemoRecipientNumber"));
+
+        if (recipient is null)
         {
-            return "SMS not sent: missing mobile number.";
+            return isLiveMode
+                ? "SMS not sent: missing mobile number."
+                : "SMS not sent: demo recipient number is not configured.";
         }
 
         var message = BuildSmsMessage(row);
 
-        var result = _smsSender.TrySend(mobileNumber, message);
+        var result = _smsSender.TrySend(recipient, message);
         if (!result.Success)
         {
-            _logger.LogWarning("SMS send failed for {MobileNumber}: {Reason}", mobileNumber, result.Response);
+            _logger.LogWarning("SMS send failed for {MobileNumber}: {Reason}", recipient, result.Response);
             return $"SMS failed: {result.Response}";
         }
 
-        return $"SMS sent to {mobileNumber}.";
+        return $"SMS sent to {recipient}.";
     }
 
     private static string BuildName(TurnstileLogRow row)
