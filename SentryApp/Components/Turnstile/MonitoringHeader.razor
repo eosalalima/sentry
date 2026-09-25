@@ -124,6 +124,18 @@
                         <div class="form-text">Toggle off to disable SMS notifications and SMS logging.</div>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label" for="smsDemoRecipientNumber">Demo SMS recipient number</label>
+                        <input class="form-control" id="smsDemoRecipientNumber" type="tel"
+                            @bind="_smsDemoRecipientNumber"
+                            disabled="@(_isPollingActive || !_isSmsSendingEnabled || _isLiveMode)"
+                            placeholder="e.g. 09171234567" />
+                        <div class="form-text">
+                            In demo mode, every notification is sent only to this number. Live mode uses each
+                            person's mobile number from the database.
+                        </div>
+                    </div>
+
                     <div class="mt-3 mb-3">
                         <label class="form-label" for="smsComPort">SMS module COM port number</label>
                         <div class="input-group">
@@ -494,6 +506,7 @@
     private bool _isSmsSendingEnabled = true;
     private bool _isSmsLoggingEnabled;
     private string _smsLogFileName = SmsModuleSender.DefaultLogFileName;
+    private string _smsDemoRecipientNumber = string.Empty;
     private bool _isCheckingSmsModule;
     private bool _showSmsCheckModal;
     private bool _smsModuleCheckSucceeded;
@@ -565,6 +578,7 @@
         _isSmsSendingEnabled = Configuration.GetValue("SmsModule:Enabled", true);
         _isSmsLoggingEnabled = _isSmsSendingEnabled && Configuration.GetValue("SmsModule:LoggingEnabled", false);
         _smsLogFileName = Configuration.GetValue("SmsModule:LogFileName", SmsModuleSender.DefaultLogFileName);
+        _smsDemoRecipientNumber = Configuration.GetValue<string>("SmsModule:DemoRecipientNumber") ?? string.Empty;
         _smsComPortNumber = Configuration.GetValue("SmsModule:ComPort", 1);
         _smsBaudRate = Configuration.GetValue("SmsModule:BaudRate", 9600);
         _smsDataBits = Configuration.GetValue("SmsModule:DataBits", 8);
@@ -644,6 +658,7 @@
             _smsComPortNumber = Math.Max(1, _smsComPortNumber);
             _isSmsLoggingEnabled &= _isSmsSendingEnabled;
             _smsLogFileName = NormalizeLogFileName(_smsLogFileName);
+            _smsDemoRecipientNumber = _smsDemoRecipientNumber.Trim();
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(_selectedDeviceSerial)
             ? AllDevicesValue
             : _selectedDeviceSerial;
@@ -859,6 +874,8 @@
             _isSmsSendingEnabled = Configuration.GetValue("SmsModule:Enabled", _isSmsSendingEnabled);
             _isSmsLoggingEnabled = _isSmsSendingEnabled && Configuration.GetValue("SmsModule:LoggingEnabled", _isSmsLoggingEnabled);
             _smsLogFileName = Configuration.GetValue("SmsModule:LogFileName", _smsLogFileName);
+            _smsDemoRecipientNumber = Configuration.GetValue<string>("SmsModule:DemoRecipientNumber")
+                ?? _smsDemoRecipientNumber;
             _smsComPortNumber = Configuration.GetValue("SmsModule:ComPort", _smsComPortNumber);
             _smsBaudRate = Configuration.GetValue("SmsModule:BaudRate", _smsBaudRate);
             _smsDataBits = Configuration.GetValue("SmsModule:DataBits", _smsDataBits);
@@ -924,6 +941,9 @@
                             _isSmsLoggingEnabled = _isSmsSendingEnabled && smsLoggingEnabled;
                         if (TryReadJsonValue(smsModule["LogFileName"], out string? smsLogFileName) && smsLogFileName != null)
                             _smsLogFileName = smsLogFileName;
+                        if (TryReadJsonValue(smsModule["DemoRecipientNumber"], out string? demoRecipientNumber)
+                            && demoRecipientNumber != null)
+                            _smsDemoRecipientNumber = demoRecipientNumber;
                         if (TryReadJsonValue(smsModule["ComPort"], out int comPort))
                             _smsComPortNumber = comPort;
                         if (TryReadJsonValue(smsModule["BaudRate"], out int baudRate))
@@ -1063,6 +1083,7 @@
                 smsModule["Enabled"] = _isSmsSendingEnabled;
                 smsModule["LoggingEnabled"] = _isSmsLoggingEnabled;
                 smsModule["LogFileName"] = _smsLogFileName;
+                smsModule["DemoRecipientNumber"] = _smsDemoRecipientNumber;
                 smsModule["ComPort"] = _smsComPortNumber;
             }
 
