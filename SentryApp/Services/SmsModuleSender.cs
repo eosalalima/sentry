@@ -100,47 +100,52 @@ public sealed class SmsModuleSender
     private static SmsSendResult SendSms(SmsDeviceSettings deviceSettings, string mobileNumber, string message)
     {
         using var port = CreateSerialPort(deviceSettings);
+        var atLog = new List<AtCommandLogEntry>();
         try
         {
             port.Open();
-            var response = SendCommand(port, "AT");
+            var response = SendCommand(port, "AT", atLog);
             if (IsErrorResponse(response))
             {
-                return new SmsSendResult(false, DescribeFailure(response));
+                return CreateResult(false, DescribeFailure(response), atLog);
             }
 
-            response = SendCommand(port, "AT+CMGF=1");
+            response = SendCommand(port, "AT+CMGF=1", atLog);
             if (IsErrorResponse(response))
             {
-                return new SmsSendResult(false, DescribeFailure(response));
+                return CreateResult(false, DescribeFailure(response), atLog);
             }
 
-            response = SendCommand(port, "AT+CMEE=1");
+            response = SendCommand(port, "AT+CMEE=1", atLog);
             if (IsErrorResponse(response))
             {
-                return new SmsSendResult(false, DescribeFailure(response));
+                return CreateResult(false, DescribeFailure(response), atLog);
             }
 
-            port.WriteLine($"AT+CMGS=\"{mobileNumber}\"");
+            var sendMessageCommand = $"AT+CMGS=\"{mobileNumber}\"";
+            atLog.Add(new AtCommandLogEntry("Sent", sendMessageCommand));
+            port.WriteLine(sendMessageCommand);
             var prompt = ReadUntilPrompt(port);
+            atLog.Add(new AtCommandLogEntry("Received", prompt));
             if (IsErrorResponse(prompt))
             {
-                return new SmsSendResult(false, DescribeFailure(prompt));
+                return CreateResult(false, DescribeFailure(prompt), atLog);
             }
 
             port.Write(message + char.ConvertFromUtf32(26));
             response = ReadResponse(port);
+            atLog.Add(new AtCommandLogEntry("Received", response));
             var success = response.Contains("OK", StringComparison.OrdinalIgnoreCase);
             if (success)
             {
-                return new SmsSendResult(true, response);
+                return CreateResult(true, response, atLog);
             }
 
-            return new SmsSendResult(false, DescribeFailure(response));
+            return CreateResult(false, DescribeFailure(response), atLog);
         }
         catch (Exception ex)
         {
-            return new SmsSendResult(false, $"SMS send failed: {ex.Message}");
+            return CreateResult(false, $"SMS send failed: {ex.Message}", atLog);
         }
     }
 
@@ -153,11 +158,23 @@ public sealed class SmsModuleSender
             NewLine = deviceSettings.NewLine
         };
 
-    private static string SendCommand(SerialPort port, string command)
+    private static string SendCommand(
+        SerialPort port,
+        string command,
+        ICollection<AtCommandLogEntry>? atLog = null)
     {
+        atLog?.Add(new AtCommandLogEntry("Sent", command));
         port.WriteLine(command);
-        return ReadResponse(port);
+        var response = ReadResponse(port);
+        atLog?.Add(new AtCommandLogEntry("Received", response));
+        return response;
     }
+
+    private static SmsSendResult CreateResult(
+        bool success,
+        string response,
+        IReadOnlyList<AtCommandLogEntry> atLog) =>
+        new(success, response) { AtCommandLog = atLog };
 
     private static string ReadResponse(SerialPort port)
     {
@@ -322,7 +339,11 @@ public sealed class SmsModuleSender
             var outcomeDetails = result.Success
                 ? $"Response: {response}"
                 : $"Failure reason: {response}";
-            var line = $"{timestamp} | To: {recipient} | Message: {messageBody} | Success: {result.Success} | {outcomeDetails}";
+            var atCommands = result.AtCommandLog.Count == 0
+                ? "N/A"
+                : string.Join(" | ", result.AtCommandLog.Select(entry =>
+                    $"{entry.Direction}: {SanitizeLogValue(entry.Value)}"));
+            var line = $"{timestamp} | To: {recipient} | Message: {messageBody} | Success: {result.Success} | {outcomeDetails} | AT commands: {atCommands}";
             var fileName = Path.GetFileName(settings.LogFileName);
             if (string.IsNullOrWhiteSpace(fileName))
                 fileName = DefaultLogFileName;
@@ -338,6 +359,11 @@ public sealed class SmsModuleSender
             _logger.LogError(ex, "Failed to write SMS sending log entry.");
         }
     }
+
+    private static string SanitizeLogValue(string value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? "N/A"
+            : value.Replace("\r", " ").Replace("\n", " ").Trim();
 }
 
 public sealed class SmsModuleSettings
@@ -367,4 +393,9 @@ public sealed record SmsDeviceSettings(
     int WriteTimeout,
     string NewLine);
 
-public sealed record SmsSendResult(bool Success, string Response);
+public sealed record AtCommandLogEntry(string Direction, string Value);
+
+public sealed record SmsSendResult(bool Success, string Response)
+{
+    public IReadOnlyList<AtCommandLogEntry> AtCommandLog { get; init; } = Array.Empty<AtCommandLogEntry>();
+}

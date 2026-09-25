@@ -62,6 +62,7 @@ public sealed class SmsModuleSenderTests
             var log = File.ReadAllText(Path.Combine(root, "custom-sms.log"));
             Assert.Contains("09171234567", log);
             Assert.Contains("Failure reason: SMS module COM port is not configured.", log);
+            Assert.Contains("AT commands: N/A", log);
         }
         finally
         {
