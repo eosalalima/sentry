@@ -257,6 +257,53 @@
     <div class="modal-backdrop fade show" @onclick="CloseSmsTestModal"></div>
 }
 
+@if (_showSmsCheckModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true"
+        aria-labelledby="smsCheckModalTitle">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="smsCheckModalTitle">Check SMS Module</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="text-body-secondary">Checking the SMS module on COM@_smsComPortNumber…</p>
+                    <ul class="sms-check-list" aria-live="polite">
+                        @foreach (var item in _smsModuleChecks)
+                        {
+                            <li class="sms-check-item">
+                                <span>@item.Check.Name</span>
+                                <span class="sms-check-dots" aria-hidden="true"></span>
+                                <span class="badge @GetSmsCheckBadgeClass(item.Status)">
+                                    @if (item.Status == SmsCheckStatus.Pending && _isCheckingSmsModule)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                                    }
+                                    @item.Status
+                                </span>
+                                @if (!string.IsNullOrWhiteSpace(item.Detail))
+                                {
+                                    <span class="sms-check-detail">@item.Detail</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                    @if (!_isCheckingSmsModule && !string.IsNullOrWhiteSpace(_smsModuleCheckSummary))
+                    {
+                        <div class="alert @(_smsModuleCheckSucceeded ? "alert-success" : "alert-danger") mb-0"
+                            role="status">@_smsModuleCheckSummary</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" @onclick="CloseSmsCheckModal"
+                        disabled="@_isCheckingSmsModule">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
 @if (_showSmsConfigModal)
 {
     <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
@@ -410,6 +457,10 @@
     private bool _isSmsLoggingEnabled;
     private string _smsLogFileName = SmsModuleSender.DefaultLogFileName;
     private bool _isCheckingSmsModule;
+    private bool _showSmsCheckModal;
+    private bool _smsModuleCheckSucceeded;
+    private string _smsModuleCheckSummary = string.Empty;
+    private List<SmsCheckItem> _smsModuleChecks = new();
     private int _smsComPortNumber = 1;
     private int _smsBaudRate = 9600;
     private int _smsDataBits = 8;
@@ -575,16 +626,55 @@
             return;
 
         NormalizeSmsModuleSettings();
+        _smsModuleChecks = SmsModuleCheck.All.Select(check => new SmsCheckItem(check)).ToList();
+        _smsModuleCheckSummary = string.Empty;
+        _smsModuleCheckSucceeded = false;
+        _showSmsCheckModal = true;
         _isCheckingSmsModule = true;
+        await InvokeAsync(StateHasChanged);
         try
         {
-            var result = await Task.Run(() => SmsSender.CheckModule(BuildSmsModuleSettings()));
-            await ShowToastAsync(result.Response, result.Success ? "success" : "danger");
+            var result = await Task.Run(() => SmsSender.CheckModule(
+                BuildSmsModuleSettings(),
+                update => InvokeAsync(() => ApplySmsCheckUpdate(update)).GetAwaiter().GetResult()));
+            _smsModuleCheckSucceeded = result.Success;
+            _smsModuleCheckSummary = result.Response;
         }
         finally
         {
             _isCheckingSmsModule = false;
+            await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private void ApplySmsCheckUpdate(SmsModuleCheckUpdate update)
+    {
+        var item = _smsModuleChecks.First(check => check.Check == update.Check);
+        item.Status = update.Success ? SmsCheckStatus.Ok : SmsCheckStatus.Failed;
+        item.Detail = update.Detail;
+        StateHasChanged();
+    }
+
+    private void CloseSmsCheckModal()
+    {
+        if (!_isCheckingSmsModule)
+            _showSmsCheckModal = false;
+    }
+
+    private static string GetSmsCheckBadgeClass(SmsCheckStatus status) => status switch
+    {
+        SmsCheckStatus.Ok => "text-bg-success",
+        SmsCheckStatus.Failed => "text-bg-danger",
+        _ => "text-bg-secondary"
+    };
+
+    private enum SmsCheckStatus { Pending, Ok, Failed }
+
+    private sealed class SmsCheckItem(SmsModuleCheck check)
+    {
+        public SmsModuleCheck Check { get; } = check;
+        public SmsCheckStatus Status { get; set; } = SmsCheckStatus.Pending;
+        public string? Detail { get; set; }
     }
 
     private bool SmsSendingEnabled

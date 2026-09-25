@@ -59,55 +59,91 @@ public sealed class SmsModuleSender
         return sendResult;
     }
 
-    public SmsSendResult CheckModule(SmsModuleSettings settings)
+    public SmsSendResult CheckModule(
+        SmsModuleSettings settings,
+        Action<SmsModuleCheckUpdate>? reportProgress = null)
     {
+        var incompleteChecks = new List<SmsModuleCheck>(SmsModuleCheck.All);
+        SmsModuleCheck? currentCheck = SmsModuleCheck.Connection;
+        void Report(SmsModuleCheck check, bool success, string? detail = null)
+        {
+            incompleteChecks.Remove(check);
+            reportProgress?.Invoke(new SmsModuleCheckUpdate(check, success, detail));
+        }
+
+        SmsSendResult Fail(SmsModuleCheck? check, string response)
+        {
+            if (check is not null)
+                Report(check, false, response);
+
+            foreach (var skippedCheck in incompleteChecks.ToArray())
+                Report(skippedCheck, false, "Not checked because an earlier check failed.");
+
+            return new SmsSendResult(false, response);
+        }
+
         settings = NormalizeSettings(settings);
         if (!settings.Enabled)
-            return new SmsSendResult(false, "SMS sending is disabled.");
+            return Fail(null, "SMS sending is disabled.");
 
         var deviceSettings = BuildDeviceSettings(settings);
         if (string.IsNullOrWhiteSpace(deviceSettings.PortName))
-            return new SmsSendResult(false, "SMS module COM port is not configured.");
+            return Fail(SmsModuleCheck.Connection, "SMS module COM port is not configured.");
 
-        using var port = CreateSerialPort(deviceSettings);
         try
         {
+            using var port = CreateSerialPort(deviceSettings);
             port.Open();
-            foreach (var command in new[] { "AT", "AT+CMGF=1", "AT+CMEE=1" })
+            Report(SmsModuleCheck.Connection, true, $"Connected to {deviceSettings.PortName}.");
+
+            foreach (var (command, check) in new[]
             {
+                ("AT", SmsModuleCheck.Modem),
+                ("AT+CMGF=1", SmsModuleCheck.SmsMode),
+                ("AT+CMEE=1", SmsModuleCheck.ErrorReporting)
+            })
+            {
+                currentCheck = check;
                 var response = SendCommand(port, command);
                 if (!response.Contains("OK", StringComparison.OrdinalIgnoreCase))
-                    return new SmsSendResult(false, DescribeFailure(response));
+                    return Fail(check, DescribeFailure(response));
+
+                Report(check, true);
             }
 
+            currentCheck = SmsModuleCheck.Network;
             var registrationResponse = SendCommand(port, "AT+CREG?");
             if (!TryParseNetworkRegistration(registrationResponse, out var registrationStatus))
             {
-                return new SmsSendResult(false,
+                return Fail(SmsModuleCheck.Network,
                     $"SMS module check failed: Could not determine network registration. {DescribeModemResponse(registrationResponse)}");
             }
 
             if (registrationStatus is not (1 or 5))
             {
-                return new SmsSendResult(false,
+                return Fail(SmsModuleCheck.Network,
                     $"SMS module is not registered to a network ({DescribeRegistrationStatus(registrationStatus)}).");
             }
 
+            var network = registrationStatus == 5 ? "roaming" : "home";
+            Report(SmsModuleCheck.Network, true, $"Registered to the {network} network.");
+
+            currentCheck = SmsModuleCheck.Signal;
             var signalResponse = SendCommand(port, "AT+CSQ");
             if (!TryParseSignalQuality(signalResponse, out var signalQuality) || signalQuality == 99)
             {
-                return new SmsSendResult(false,
+                return Fail(SmsModuleCheck.Signal,
                     $"SMS module is registered to the network, but signal strength is unavailable. {DescribeModemResponse(signalResponse)}");
             }
 
             var signalDbm = -113 + (2 * signalQuality);
-            var network = registrationStatus == 5 ? "roaming" : "home";
+            Report(SmsModuleCheck.Signal, true, $"{signalQuality}/31 ({signalDbm} dBm)");
             return new SmsSendResult(true,
                 $"SMS module is ready, registered to the {network} network, with signal strength {signalQuality}/31 ({signalDbm} dBm).");
         }
         catch (Exception ex)
         {
-            return new SmsSendResult(false, $"SMS module check failed: {ex.Message}");
+            return Fail(currentCheck, $"SMS module check failed: {ex.Message}");
         }
     }
 
@@ -458,6 +494,21 @@ public sealed record SmsDeviceSettings(
     string NewLine);
 
 public sealed record AtCommandLogEntry(string Direction, string Value);
+
+public sealed record SmsModuleCheck(string Name)
+{
+    public static readonly SmsModuleCheck Connection = new("Connection");
+    public static readonly SmsModuleCheck Modem = new("Modem response");
+    public static readonly SmsModuleCheck SmsMode = new("SMS mode");
+    public static readonly SmsModuleCheck ErrorReporting = new("Error reporting");
+    public static readonly SmsModuleCheck Network = new("Network registration");
+    public static readonly SmsModuleCheck Signal = new("Signal");
+
+    public static IReadOnlyList<SmsModuleCheck> All { get; } =
+        new[] { Connection, Modem, SmsMode, ErrorReporting, Network, Signal };
+}
+
+public sealed record SmsModuleCheckUpdate(SmsModuleCheck Check, bool Success, string? Detail = null);
 
 public sealed record SmsSendResult(bool Success, string Response)
 {
