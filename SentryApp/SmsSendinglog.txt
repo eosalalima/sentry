@@ -285,3 +285,18 @@
 2026-09-24 14:10:55 | To: 09973093748 | Message: FRANCISCO, KENJIE has Logged OUT on 24-Sep-2026 02:10 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
 2026-09-24 14:11:01 | To: 09268250394 | Message: MIRANDA, RON CHARLES has Logged OUT on 24-Sep-2026 02:11 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
 2026-09-24 14:11:07 | To: 09935247409 | Message: MAGNO, CARRIE ANNE has Logged OUT on 24-Sep-2026 02:11 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:31 | To: 09959704154 | Message: PARUNGAO, PRINCESS MIN has Logged OUT on 24-Sep-2026 02:52 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:31 | To: 09169711715 | Message: CASTILLO, RIZZA has Logged OUT on 24-Sep-2026 02:52 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:31 | To: 09362742738 | Message: TOLENTINO, ANJELAINE has Logged IN on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:31 | To: 09059467332 | Message: GAVINO, JACKLYN has Logged OUT on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:31 | To: 09051532040 | Message: ARAMBULO, DIONNALYN has Logged OUT on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:31 | To: 09365167371 | Message: DEL MUNDO, JASCHELL has Logged IN on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:33 | To: 09367714761 | Message: PASCUAL, SHIRLEY has Logged IN on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:41 | To: 09165074736 | Message: DE LEON, ADONIMAY has Logged OUT on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:41 | To: 09760232722 | Message: GAMORA, ROBELYN has Logged OUT on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:43 | To: 09055093765 | Message: DAZA, TINA MICHELLE has Logged OUT on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:51 | To: 09638893146 | Message: PACULAN, RIZ has Logged OUT on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:53:55 | To: 09351584434 | Message: SANTIAGO, ANTHONY has Logged OUT on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:54:01 | To: 9363529220 | Message: BANTIGUE, RUVIMAE has Logged OUT on 24-Sep-2026 02:53 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:54:01 | To: 0286467579 | Message: FERNANDEZ, MARICRIS has Logged OUT on 24-Sep-2026 02:54 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
+2026-09-24 14:54:06 | To: 09218515903 | Message: DAYAO, BENSON has Logged OUT on 24-Sep-2026 02:54 pm * Auto-generated SMS - do not reply | Success: False | SMS send failed: Could not find file 'COM4'.
