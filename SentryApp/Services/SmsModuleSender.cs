@@ -182,6 +182,17 @@ public sealed class SmsModuleSender
                 return CreateResult(false, DescribeFailure(response), atLog);
             }
 
+            // Ask the modem to forward newly received messages directly over the
+            // serial connection. This allows request/reply services (for example,
+            // sending DATA BAL to a short code) to return their reply while the
+            // test transaction is still open.
+            response = SendCommand(port, "AT+CNMI=2,2,0,0,0", atLog);
+            if (IsErrorResponse(response))
+            {
+                atLog.Add(new AtCommandLogEntry("Info",
+                    "The modem does not support direct incoming message delivery."));
+            }
+
             var sendMessageCommand = $"AT+CMGS=\"{mobileNumber}\"";
             atLog.Add(new AtCommandLogEntry("Sent", sendMessageCommand));
             port.WriteLine(sendMessageCommand);
@@ -198,6 +209,8 @@ public sealed class SmsModuleSender
             var success = response.Contains("OK", StringComparison.OrdinalIgnoreCase);
             if (success)
             {
+                var incomingMessage = ReadIncomingMessage(port, deviceSettings.ReplyTimeout);
+                atLog.Add(new AtCommandLogEntry("Incoming message", incomingMessage));
                 return CreateResult(true, response, atLog);
             }
 
@@ -300,12 +313,47 @@ public sealed class SmsModuleSender
         return buffer.Length == 0 ? "No response received." : buffer.ToString();
     }
 
+    private static string ReadIncomingMessage(SerialPort port, int replyTimeout)
+    {
+        var buffer = new StringBuilder();
+        var stopAt = DateTime.UtcNow.AddMilliseconds(replyTimeout);
+
+        while (DateTime.UtcNow < stopAt)
+        {
+            var chunk = port.ReadExisting();
+            if (!string.IsNullOrEmpty(chunk))
+            {
+                buffer.Append(chunk);
+                if (ContainsCompleteIncomingMessage(buffer.ToString()))
+                    break;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        return buffer.Length == 0
+            ? $"No incoming message received within {replyTimeout / 1000d:0.#} seconds."
+            : buffer.ToString();
+    }
+
+    internal static bool ContainsCompleteIncomingMessage(string response)
+    {
+        var cmtIndex = response.IndexOf("+CMT:", StringComparison.OrdinalIgnoreCase);
+        if (cmtIndex < 0)
+            return false;
+
+        var message = response[cmtIndex..];
+        var lines = message.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries);
+        return lines.Length >= 2 && !string.IsNullOrWhiteSpace(lines[1]);
+    }
+
     private static SmsModuleSettings NormalizeSettings(SmsModuleSettings settings)
     {
         settings.BaudRate = Math.Max(1, settings.BaudRate);
         settings.DataBits = Math.Max(5, settings.DataBits);
         settings.ReadTimeout = Math.Max(1, settings.ReadTimeout);
         settings.WriteTimeout = Math.Max(1, settings.WriteTimeout);
+        settings.ReplyTimeout = Math.Max(1, settings.ReplyTimeout);
         settings.NewLine = string.IsNullOrWhiteSpace(settings.NewLine) ? "\r\n" : settings.NewLine;
         settings.Parity = string.IsNullOrWhiteSpace(settings.Parity) ? Parity.None.ToString() : settings.Parity;
         settings.StopBits = string.IsNullOrWhiteSpace(settings.StopBits) ? StopBits.One.ToString() : settings.StopBits;
@@ -339,6 +387,7 @@ public sealed class SmsModuleSender
             handshake,
             settings.ReadTimeout,
             settings.WriteTimeout,
+            settings.ReplyTimeout,
             settings.NewLine);
     }
 
@@ -477,6 +526,7 @@ public sealed class SmsModuleSettings
     public string Handshake { get; set; } = "None";
     public int ReadTimeout { get; set; } = 2000;
     public int WriteTimeout { get; set; } = 2000;
+    public int ReplyTimeout { get; set; } = 30000;
     public string NewLine { get; set; } = "\r\n";
     public bool LoggingEnabled { get; set; }
     public string LogFileName { get; set; } = SmsModuleSender.DefaultLogFileName;
@@ -491,6 +541,7 @@ public sealed record SmsDeviceSettings(
     Handshake Handshake,
     int ReadTimeout,
     int WriteTimeout,
+    int ReplyTimeout,
     string NewLine);
 
 public sealed record AtCommandLogEntry(string Direction, string Value);

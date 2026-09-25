@@ -129,6 +129,16 @@ public sealed class SmsModuleSenderTests
         Assert.False(SmsModuleSender.TryParseSignalQuality(response, out _));
     }
 
+    [Theory]
+    [InlineData("\r\n+CMT: \"8080\",\"\",\"26/09/25,12:00:00+00\"\r\nYour balance is 100 MB.\r\n", true)]
+    [InlineData("+CMT: \"8080\"\r\nDATA BAL response", true)]
+    [InlineData("+CMT: \"8080\"\r\n", false)]
+    [InlineData("OK\r\n", false)]
+    public void ContainsCompleteIncomingMessage_DetectsMessageBody(string response, bool expected)
+    {
+        Assert.Equal(expected, SmsModuleSender.ContainsCompleteIncomingMessage(response));
+    }
+
     private sealed class TestWebHostEnvironment : IWebHostEnvironment
     {
         public string ApplicationName { get; set; } = "SentryApp.Tests";
