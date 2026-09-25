@@ -319,7 +319,10 @@ public sealed class SmsModuleSender
             var response = string.IsNullOrWhiteSpace(result.Response)
                 ? "No response returned."
                 : result.Response.Replace("\r", " ").Replace("\n", " ").Trim();
-            var line = $"{timestamp} | To: {recipient} | Message: {messageBody} | Success: {result.Success} | {response}";
+            var outcomeDetails = result.Success
+                ? $"Response: {response}"
+                : $"Failure reason: {response}";
+            var line = $"{timestamp} | To: {recipient} | Message: {messageBody} | Success: {result.Success} | {outcomeDetails}";
             var fileName = Path.GetFileName(settings.LogFileName);
             if (string.IsNullOrWhiteSpace(fileName))
                 fileName = DefaultLogFileName;
