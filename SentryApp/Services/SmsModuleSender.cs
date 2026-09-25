@@ -1,5 +1,6 @@
 using System.IO.Ports;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -79,7 +80,30 @@ public sealed class SmsModuleSender
                     return new SmsSendResult(false, DescribeFailure(response));
             }
 
-            return new SmsSendResult(true, "SMS Module is ok, ready to send message!");
+            var registrationResponse = SendCommand(port, "AT+CREG?");
+            if (!TryParseNetworkRegistration(registrationResponse, out var registrationStatus))
+            {
+                return new SmsSendResult(false,
+                    $"SMS module check failed: Could not determine network registration. {DescribeModemResponse(registrationResponse)}");
+            }
+
+            if (registrationStatus is not (1 or 5))
+            {
+                return new SmsSendResult(false,
+                    $"SMS module is not registered to a network ({DescribeRegistrationStatus(registrationStatus)}).");
+            }
+
+            var signalResponse = SendCommand(port, "AT+CSQ");
+            if (!TryParseSignalQuality(signalResponse, out var signalQuality) || signalQuality == 99)
+            {
+                return new SmsSendResult(false,
+                    $"SMS module is registered to the network, but signal strength is unavailable. {DescribeModemResponse(signalResponse)}");
+            }
+
+            var signalDbm = -113 + (2 * signalQuality);
+            var network = registrationStatus == 5 ? "roaming" : "home";
+            return new SmsSendResult(true,
+                $"SMS module is ready, registered to the {network} network, with signal strength {signalQuality}/31 ({signalDbm} dBm).");
         }
         catch (Exception ex)
         {
@@ -284,6 +308,46 @@ public sealed class SmsModuleSender
 
     private static bool IsErrorResponse(string response) =>
         response.Contains("ERROR", StringComparison.OrdinalIgnoreCase);
+
+    internal static bool TryParseNetworkRegistration(string response, out int status)
+    {
+        var match = Regex.Match(
+            response ?? string.Empty,
+            @"\+CREG:\s*(?:(?:[0-2])\s*,\s*)?([0-5])\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        return int.TryParse(match.Success ? match.Groups[1].Value : null, out status);
+    }
+
+    internal static bool TryParseSignalQuality(string response, out int signalQuality)
+    {
+        var match = Regex.Match(
+            response ?? string.Empty,
+            @"\+CSQ:\s*(\d{1,2})\s*,\s*\d{1,2}\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        if (!int.TryParse(match.Success ? match.Groups[1].Value : null, out signalQuality))
+            return false;
+
+        return signalQuality is >= 0 and <= 31 or 99;
+    }
+
+    private static string DescribeRegistrationStatus(int status) => status switch
+    {
+        0 => "not registered and not searching",
+        2 => "searching for a network",
+        3 => "registration denied",
+        4 => "registration status unknown",
+        _ => "not registered"
+    };
+
+    private static string DescribeModemResponse(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response) || response == "No response received.")
+            return "No response received.";
+
+        return $"Modem response: {response.Trim()}";
+    }
 
     private static string DescribeFailure(string response)
     {
