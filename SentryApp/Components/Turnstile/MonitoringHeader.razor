@@ -225,7 +225,7 @@
 @if (_showSmsTestModal)
 {
     <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-dialog-centered modal-xl sms-test-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Send Test Message</h5>
@@ -233,15 +233,53 @@
                 </div>
 
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label" for="smsTestNumber">Mobile number</label>
-                        <input class="form-control" id="smsTestNumber" type="tel" @bind="_smsTestMobileNumber"
-                            placeholder="+63..." />
-                    </div>
+                    <div class="row g-4">
+                        <div class="col-lg-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="smsTestNumber">Mobile number</label>
+                                <input class="form-control" id="smsTestNumber" type="tel" @bind="_smsTestMobileNumber"
+                                    placeholder="+63... or short code" />
+                            </div>
 
-                    <div class="mb-3">
-                        <label class="form-label" for="smsTestMessage">Message</label>
-                        <textarea class="form-control" id="smsTestMessage" rows="4" @bind="_smsTestMessage"></textarea>
+                            <div>
+                                <label class="form-label" for="smsTestMessage">Message</label>
+                                <textarea class="form-control" id="smsTestMessage" rows="7" @bind="_smsTestMessage"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <label class="form-label mb-0">AT command responses</label>
+                                @if (_isSendingSmsTest)
+                                {
+                                    <span class="text-body-secondary small">
+                                        <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                                        Waiting for response…
+                                    </span>
+                                }
+                            </div>
+                            <div class="sms-test-responses" aria-live="polite" aria-busy="@_isSendingSmsTest">
+                                @if (_smsTestAtLog.Count == 0)
+                                {
+                                    <p class="text-body-secondary mb-0">Send a message to view the modem responses and any incoming reply.</p>
+                                }
+                                else
+                                {
+                                    @foreach (var entry in _smsTestAtLog)
+                                    {
+                                        <div class="sms-test-response-entry">
+                                            <span class="badge @GetAtLogBadgeClass(entry.Direction)">@entry.Direction</span>
+                                            <pre>@entry.Value</pre>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(_smsTestResultMessage))
+                            {
+                                <div class="alert @(_smsTestSucceeded ? "alert-success" : "alert-danger") mt-3 mb-0" role="status">
+                                    @_smsTestResultMessage
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
 
@@ -469,6 +507,7 @@
     private string _smsHandshake = Handshake.None.ToString();
     private int _smsReadTimeoutMs = 2000;
     private int _smsWriteTimeoutMs = 2000;
+    private int _smsReplyTimeoutMs = 30000;
     private string _smsNewLine = "\r\n";
     private string _smsMessageFormat = DefaultSmsMessageFormat;
     private bool _isPollingActive;
@@ -481,6 +520,9 @@
     private string _smsTestMobileNumber = string.Empty;
     private string _smsTestMessage = string.Empty;
     private bool _isSendingSmsTest;
+    private bool _smsTestSucceeded;
+    private string _smsTestResultMessage = string.Empty;
+    private IReadOnlyList<AtCommandLogEntry> _smsTestAtLog = Array.Empty<AtCommandLogEntry>();
     private bool _showSmsConfigModal;
 
     private static readonly string[] SmsParityOptions = { "None", "Odd", "Even", "Mark", "Space" };
@@ -531,6 +573,7 @@
         _smsHandshake = Configuration.GetValue("SmsModule:Handshake", Handshake.None.ToString());
         _smsReadTimeoutMs = Configuration.GetValue("SmsModule:ReadTimeout", 2000);
         _smsWriteTimeoutMs = Configuration.GetValue("SmsModule:WriteTimeout", 2000);
+        _smsReplyTimeoutMs = Configuration.GetValue("SmsModule:ReplyTimeout", 30000);
         _smsNewLine = Configuration.GetValue("SmsModule:NewLine", "\r\n");
         _smsMessageFormat = Configuration.GetValue("SmsModule:MessageFormat", DefaultSmsMessageFormat);
 
@@ -698,6 +741,9 @@
     {
         _smsTestMobileNumber = string.Empty;
         _smsTestMessage = string.Empty;
+        _smsTestSucceeded = false;
+        _smsTestResultMessage = string.Empty;
+        _smsTestAtLog = Array.Empty<AtCommandLogEntry>();
         _showSmsTestModal = true;
     }
 
@@ -745,16 +791,23 @@
         NormalizeSmsModuleSettings();
 
         _isSendingSmsTest = true;
+        _smsTestSucceeded = false;
+        _smsTestResultMessage = string.Empty;
+        _smsTestAtLog = Array.Empty<AtCommandLogEntry>();
         await InvokeAsync(StateHasChanged);
 
         try
         {
             var settings = BuildSmsModuleSettings();
             var result = await Task.Run(() => SmsSender.TrySend(_smsTestMobileNumber, _smsTestMessage, settings));
+            _smsTestSucceeded = result.Success;
+            _smsTestResultMessage = result.Success
+                ? "Message sent. The modem response and any reply received are shown above."
+                : result.Response;
+            _smsTestAtLog = result.AtCommandLog;
 
             if (result.Success)
             {
-                _showSmsTestModal = false;
                 await ShowToastAsync("Test message sent successfully.", "success");
             }
             else
@@ -765,6 +818,8 @@
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Failed to send test message: {ex}");
+            _smsTestSucceeded = false;
+            _smsTestResultMessage = $"Failed to send test message: {ex.Message}";
             await ShowToastAsync($"Failed to send test message: {ex.Message}", "danger");
         }
         finally
@@ -773,6 +828,14 @@
             await InvokeAsync(StateHasChanged);
         }
     }
+
+    private static string GetAtLogBadgeClass(string direction) => direction switch
+    {
+        "Sent" => "text-bg-primary",
+        "Incoming message" => "text-bg-success",
+        "Info" => "text-bg-warning",
+        _ => "text-bg-secondary"
+    };
 
     private async Task LoadSettingsAsync()
     {
@@ -804,6 +867,7 @@
             _smsHandshake = Configuration.GetValue("SmsModule:Handshake", _smsHandshake);
             _smsReadTimeoutMs = Configuration.GetValue("SmsModule:ReadTimeout", _smsReadTimeoutMs);
             _smsWriteTimeoutMs = Configuration.GetValue("SmsModule:WriteTimeout", _smsWriteTimeoutMs);
+            _smsReplyTimeoutMs = Configuration.GetValue("SmsModule:ReplyTimeout", _smsReplyTimeoutMs);
             _smsNewLine = Configuration.GetValue("SmsModule:NewLine", _smsNewLine);
             _smsMessageFormat = Configuration.GetValue("SmsModule:MessageFormat", _smsMessageFormat);
 
@@ -1154,6 +1218,7 @@
         Handshake = _smsHandshake,
         ReadTimeout = Math.Max(1, _smsReadTimeoutMs),
         WriteTimeout = Math.Max(1, _smsWriteTimeoutMs),
+        ReplyTimeout = Math.Max(1, _smsReplyTimeoutMs),
         NewLine = string.IsNullOrWhiteSpace(_smsNewLine) ? "\r\n" : _smsNewLine
     };
 
@@ -1164,6 +1229,7 @@
         _smsDataBits = Math.Max(5, _smsDataBits);
         _smsReadTimeoutMs = Math.Max(1, _smsReadTimeoutMs);
         _smsWriteTimeoutMs = Math.Max(1, _smsWriteTimeoutMs);
+        _smsReplyTimeoutMs = Math.Max(1, _smsReplyTimeoutMs);
         _smsParity = SmsParityOptions.Contains(_smsParity, StringComparer.OrdinalIgnoreCase)
         ? _smsParity
         : Parity.None.ToString();
