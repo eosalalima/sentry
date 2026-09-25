@@ -70,6 +70,48 @@ public sealed class SmsModuleSenderTests
         }
     }
 
+    [Theory]
+    [InlineData("\r\n+CREG: 0,1\r\n\r\nOK\r\n", 1)]
+    [InlineData("+CREG: 0,5\nOK\n", 5)]
+    [InlineData("+CREG: 2\r\nOK\r\n", 2)]
+    public void TryParseNetworkRegistration_WhenResponseIsValid_ReturnsStatus(string response, int expectedStatus)
+    {
+        var parsed = SmsModuleSender.TryParseNetworkRegistration(response, out var status);
+
+        Assert.True(parsed);
+        Assert.Equal(expectedStatus, status);
+    }
+
+    [Theory]
+    [InlineData("ERROR")]
+    [InlineData("OK")]
+    [InlineData("+CREG: invalid")]
+    public void TryParseNetworkRegistration_WhenResponseIsInvalid_ReturnsFalse(string response)
+    {
+        Assert.False(SmsModuleSender.TryParseNetworkRegistration(response, out _));
+    }
+
+    [Theory]
+    [InlineData("\r\n+CSQ: 20,99\r\n\r\nOK\r\n", 20)]
+    [InlineData("+CSQ: 0,0\nOK\n", 0)]
+    [InlineData("+CSQ: 99,99\nOK\n", 99)]
+    public void TryParseSignalQuality_WhenResponseIsValid_ReturnsRssi(string response, int expectedRssi)
+    {
+        var parsed = SmsModuleSender.TryParseSignalQuality(response, out var rssi);
+
+        Assert.True(parsed);
+        Assert.Equal(expectedRssi, rssi);
+    }
+
+    [Theory]
+    [InlineData("ERROR")]
+    [InlineData("+CSQ: 32,0")]
+    [InlineData("+CSQ: invalid")]
+    public void TryParseSignalQuality_WhenResponseIsInvalid_ReturnsFalse(string response)
+    {
+        Assert.False(SmsModuleSender.TryParseSignalQuality(response, out _));
+    }
+
     private sealed class TestWebHostEnvironment : IWebHostEnvironment
     {
         public string ApplicationName { get; set; } = "SentryApp.Tests";
