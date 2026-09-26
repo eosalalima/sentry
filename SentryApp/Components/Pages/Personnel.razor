@@ -12,30 +12,15 @@
     <header class="personnel-header">
         <div>
             <h1>Personnel Management</h1>
-            <p>View personnel records and maintain mobile numbers.</p>
+            <p>View personnel records and maintain SMS contact numbers.</p>
         </div>
         <a class="btn btn-outline-secondary" href="/">Back to Monitoring</a>
     </header>
 
     <div class="personnel-card">
-        <ul class="nav nav-tabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link @TabClass(PersonnelType.Student)" type="button" role="tab"
-                        aria-selected="@(_selectedType == PersonnelType.Student)" @onclick="() => SelectTabAsync(PersonnelType.Student)">
-                    Student
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link @TabClass(PersonnelType.Staff)" type="button" role="tab"
-                        aria-selected="@(_selectedType == PersonnelType.Staff)" @onclick="() => SelectTabAsync(PersonnelType.Staff)">
-                    Staff
-                </button>
-            </li>
-        </ul>
-
         <div class="personnel-toolbar">
-            <label class="visually-hidden" for="personnelSearch">Search @_selectedType personnel</label>
-            <input id="personnelSearch" class="form-control" type="search" placeholder="Search @_selectedType personnel..."
+            <label class="visually-hidden" for="personnelSearch">Search personnel</label>
+            <input id="personnelSearch" class="form-control" type="search" placeholder="Search personnel..."
                    @bind="_search" @bind:event="oninput" @onkeyup="HandleSearchKeyUp" />
             <button class="btn btn-primary" type="button" @onclick="SearchAsync" disabled="@_isLoading">Search</button>
         </div>
@@ -52,7 +37,7 @@
         {
             <div class="personnel-state" role="status">
                 <div class="spinner-border text-primary" aria-hidden="true"></div>
-                <span>Loading @_selectedType personnel...</span>
+                <span>Loading personnel...</span>
             </div>
         }
         else if (_records.Count == 0)
@@ -60,7 +45,7 @@
             <div class="personnel-state">
                 @if (string.IsNullOrWhiteSpace(_appliedSearch))
                 {
-                    <span>No @_selectedType personnel records exist.</span>
+                    <span>No personnel records exist.</span>
                 }
                 else
                 {
@@ -74,12 +59,10 @@
                 <table class="table table-hover align-middle personnel-table">
                     <thead>
                         <tr>
-                            <th>@(_selectedType == PersonnelType.Student ? "ID Number" : "IS Number")</th>
+                            <th>Personnel Number</th>
                             <th>Last Name</th>
                             <th>First Name</th>
-                            <th>Middle Initial</th>
-                            <th>@(_selectedType == PersonnelType.Student ? "Course" : "Designation")</th>
-                            <th>Mobile Number</th>
+                            <th>SMS Contact Number</th>
                             <th class="text-center">Action</th>
                         </tr>
                     </thead>
@@ -87,15 +70,13 @@
                         @foreach (var record in _records)
                         {
                             <tr>
-                                <td>@record.IdNumber</td>
+                                <td>@record.PersonnelNo</td>
                                 <td>@record.LastName</td>
                                 <td>@record.FirstName</td>
-                                <td>@record.MiddleInitial</td>
-                                <td>@record.Classification</td>
-                                <td>@record.MobileNumber</td>
+                                <td>@record.SmsContactNumber</td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-primary" type="button" title="Edit Mobile Number"
-                                            aria-label="Edit Mobile Number for @record.FirstName @record.LastName" @onclick="() => OpenEdit(record)">
+                                    <button class="btn btn-sm btn-outline-primary" type="button" title="Edit SMS Contact Number"
+                                            aria-label="Edit SMS Contact Number for @record.FirstName @record.LastName" @onclick="() => OpenEdit(record)">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
                                             <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10A.5.5 0 0 1 5.5 14H2a.5.5 0 0 1-.5-.5V10a.5.5 0 0 1 .146-.354zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zM12.793 5.5 10.5 3.207 2.5 11.207V13h1.793z" />
                                         </svg>
@@ -109,7 +90,7 @@
 
             <div class="personnel-pagination">
                 <span>Showing @FirstRecord–@LastRecord of @_totalCount (@_pageSize per page)</span>
-                <nav aria-label="@_selectedType personnel pagination">
+                <nav aria-label="Personnel pagination">
                     <ul class="pagination pagination-sm mb-0">
                         <li class="page-item @(_page == 1 ? "disabled" : null)">
                             <button class="page-link" type="button" disabled="@(_page == 1)" @onclick="PreviousPageAsync">Previous</button>
@@ -136,7 +117,7 @@
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title fs-5" id="editMobileTitle">Edit Mobile Number</h2>
+                    <h2 class="modal-title fs-5" id="editMobileTitle">Edit SMS Contact Number</h2>
                     <button type="button" class="btn-close" aria-label="Close" disabled="@_isSaving" @onclick="CancelEdit"></button>
                 </div>
                 <div class="modal-body">
@@ -145,8 +126,8 @@
                         <div class="alert alert-danger" role="alert">@_saveError</div>
                     }
                     <div class="mb-3">
-                        <label class="form-label" for="editId">@(_selectedType == PersonnelType.Student ? "ID Number" : "IS Number")</label>
-                        <input id="editId" class="form-control" value="@_editingRecord.IdNumber" readonly />
+                        <label class="form-label" for="editId">Personnel Number</label>
+                        <input id="editId" class="form-control" value="@_editingRecord.PersonnelNo" readonly />
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="editLastName">Last Name</label>
@@ -157,10 +138,10 @@
                         <input id="editFirstName" class="form-control" value="@_editingRecord.FirstName" readonly />
                     </div>
                     <div>
-                        <label class="form-label" for="editMobile">Mobile Number</label>
-                        <input id="editMobile" class="form-control" type="tel" maxlength="@PersonnelManagementService.MobileNumberMaxLength"
+                        <label class="form-label" for="editMobile">SMS Contact Number</label>
+                        <input id="editMobile" class="form-control" type="tel" maxlength="@PersonnelManagementService.SmsContactNumberMaxLength"
                                @bind="_editedMobileNumber" @bind:event="oninput" />
-                        <div class="form-text">Up to @PersonnelManagementService.MobileNumberMaxLength characters. A blank value clears the mobile number.</div>
+                        <div class="form-text">Up to @PersonnelManagementService.SmsContactNumberMaxLength characters. A blank value clears the SMS contact number.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -177,7 +158,6 @@
 
 @code {
     private const int DefaultPageSize = 50;
-    private PersonnelType _selectedType = PersonnelType.Student;
     private IReadOnlyList<PersonnelManagementRecord> _records = [];
     private PersonnelManagementRecord? _editingRecord;
     private string _search = string.Empty;
@@ -212,20 +192,6 @@
         return LoadAsync();
     }
 
-    private string TabClass(PersonnelType type) => _selectedType == type ? "active" : string.Empty;
-
-    private async Task SelectTabAsync(PersonnelType type)
-    {
-        if (_selectedType == type)
-            return;
-        _selectedType = type;
-        _search = string.Empty;
-        _appliedSearch = string.Empty;
-        _page = 1;
-        _successMessage = null;
-        await LoadAsync();
-    }
-
     private async Task SearchAsync()
     {
         _appliedSearch = _search.Trim();
@@ -246,7 +212,7 @@
         _errorMessage = null;
         try
         {
-            var result = await PersonnelService.GetPersonnelAsync(_selectedType, _appliedSearch, _page, _pageSize);
+            var result = await PersonnelService.GetPersonnelAsync(_appliedSearch, _page, _pageSize);
             _records = result.Records;
             _totalCount = result.TotalCount;
         }
@@ -265,7 +231,7 @@
     private void OpenEdit(PersonnelManagementRecord record)
     {
         _editingRecord = record;
-        _editedMobileNumber = record.MobileNumber ?? string.Empty;
+        _editedMobileNumber = record.SmsContactNumber ?? string.Empty;
         _saveError = null;
     }
 
@@ -283,9 +249,9 @@
         if (_editingRecord is null || _isSaving)
             return;
         var normalizedMobile = _editedMobileNumber.Trim();
-        if (normalizedMobile.Length > PersonnelManagementService.MobileNumberMaxLength)
+        if (normalizedMobile.Length > PersonnelManagementService.SmsContactNumberMaxLength)
         {
-            _saveError = $"Mobile number cannot exceed {PersonnelManagementService.MobileNumberMaxLength} characters.";
+            _saveError = $"SMS contact number cannot exceed {PersonnelManagementService.SmsContactNumberMaxLength} characters.";
             return;
         }
 
@@ -293,14 +259,14 @@
         _saveError = null;
         try
         {
-            await PersonnelService.UpdateMobileNumberAsync(_selectedType, _editingRecord.IdNumber, normalizedMobile);
+            await PersonnelService.UpdateSmsContactNumberAsync(_editingRecord.PersonnelNo, normalizedMobile);
             _editingRecord = null;
             await LoadAsync();
-            _successMessage = "Mobile number updated successfully.";
+            _successMessage = "SMS contact number updated successfully.";
         }
         catch
         {
-            _saveError = "The mobile number could not be saved. Please try again or contact your administrator.";
+            _saveError = "The SMS contact number could not be saved. Please try again or contact your administrator.";
         }
         finally
         {

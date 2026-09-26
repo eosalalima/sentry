@@ -14,7 +14,9 @@ public sealed class TurnstileLogRow
 
     public string? LastName { get; set; }
     public string? FirstName { get; set; }
+    public string? PersonnelNo { get; set; }
     public string? PhotoId { get; set; }
+    public string? SmsContactNumber { get; set; }
 
     public string? Event { get; set; }
     public string? EventAddress { get; set; }

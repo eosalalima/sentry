@@ -9,7 +9,7 @@ public sealed class TurnstileLogEntry
 
     public string PhotoUrl { get; init; } = "/img/avatar-placeholder.svg";
     public string PersonnelName { get; init; } = "UNKNOWN";
-    public string? Classification { get; init; }
+    public string? PersonnelNo { get; init; }
     public string? AccessNumber { get; init; }
 
     public string? DeviceSerialNumber { get; init; }

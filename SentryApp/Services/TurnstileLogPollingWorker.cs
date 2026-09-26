@@ -12,7 +12,6 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
     private readonly TurnstileLogState _state;
     private readonly IPhotoUrlBuilder _photoUrlBuilder;
     private readonly TurnstilePollingController _controller;
-    private readonly PersonnelLookupService _personnelLookup;
     private readonly SmsModuleSender _smsSender;
     private readonly IConfiguration _config;
     private readonly ILogger<TurnstileLogPollingWorker> _logger;
@@ -37,7 +36,6 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         TurnstileLogState state,
         IPhotoUrlBuilder photoUrlBuilder,
         TurnstilePollingController controller,
-        PersonnelLookupService personnelLookup,
         SmsModuleSender smsSender,
         MonitoringDataLogWriter dataLogWriter,
         IConfiguration config,
@@ -47,7 +45,6 @@ public sealed class TurnstileLogPollingWorker : BackgroundService
         _state = state;
         _photoUrlBuilder = photoUrlBuilder;
         _controller = controller;
-        _personnelLookup = personnelLookup;
         _smsSender = smsSender;
         _dataLogWriter = dataLogWriter;
         _config = config;
@@ -130,7 +127,9 @@ SELECT TOP ({_maxRowsPerPoll})
 
     p.LastName           AS LastName,
     p.FirstName          AS FirstName,
+    p.PersonnelNo        AS PersonnelNo,
     p.PhotoId            AS PhotoId,
+    p.SmsContactNumber   AS SmsContactNumber,
 
     dl.Event             AS Event,
     dl.EventAddress      AS EventAddress,
@@ -193,8 +192,7 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
 
             var name = BuildName(row);
             var photoUrl = _photoUrlBuilder.Build(row.PhotoId);
-            var personnel = await _personnelLookup.GetPersonnelAsync(row.AccessNumber, ct);
-            var smsStatusMessage = SendEntrySms(row, personnel?.MobileNumber);
+            var smsStatusMessage = SendEntrySms(row, row.SmsContactNumber);
 
             var entry = new TurnstileLogEntry
             {
@@ -204,7 +202,7 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 LogType = row.LogType,
                 PhotoUrl = photoUrl,
                 PersonnelName = name,
-                Classification = personnel?.Classification,
+                PersonnelNo = row.PersonnelNo,
                 AccessNumber = row.AccessNumber,
 
                 DeviceSerialNumber = row.DeviceSerialNumber,
