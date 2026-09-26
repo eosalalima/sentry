@@ -75,7 +75,8 @@ public sealed class PersonnelManagementService
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         var count = await db.Database.SqlQueryRaw<int>($$"""
             SELECT COUNT(*) AS [Value]
-            FROM [dbo].[Personnels]
+            FROM [dbo].[Personnels] p
+            {{MobileNumberLookup}}
             WHERE [IsDeleted] = 0 AND {{SearchClause}}
             """, pattern).SingleAsync(ct);
         var records = await db.Database.SqlQueryRaw<PersonnelManagementRecord>($$"""
@@ -83,8 +84,12 @@ public sealed class PersonnelManagementService
                    COALESCE(CAST([LastName] AS nvarchar(max)), N'') AS [LastName],
                    COALESCE(CAST([FirstName] AS nvarchar(max)), N'') AS [FirstName],
                    CAST([PhotoId] AS nvarchar(max)) AS [PhotoId],
-                   CAST([SmsContactNumber] AS nvarchar(max)) AS [SmsContactNumber]
-            FROM [dbo].[Personnels]
+                   COALESCE(
+                       NULLIF(LTRIM(RTRIM(CAST(p.[SmsContactNumber] AS nvarchar(max)))), N''),
+                       directory.[MobileNumber]
+                   ) AS [SmsContactNumber]
+            FROM [dbo].[Personnels] p
+            {{MobileNumberLookup}}
             WHERE [IsDeleted] = 0 AND {{SearchClause}}
             ORDER BY [LastName] ASC, [FirstName] ASC, [PersonnelNo] ASC
             OFFSET {1} ROWS FETCH NEXT {2} ROWS ONLY
@@ -99,9 +104,34 @@ public sealed class PersonnelManagementService
         .Replace("[", "~[", StringComparison.Ordinal);
 
     private const string SearchClause = """
-        (CAST([PersonnelNo] AS nvarchar(max)) LIKE {0} ESCAPE '~'
-         OR CAST([LastName] AS nvarchar(max)) LIKE {0} ESCAPE '~'
-         OR CAST([FirstName] AS nvarchar(max)) LIKE {0} ESCAPE '~'
-         OR CAST([SmsContactNumber] AS nvarchar(max)) LIKE {0} ESCAPE '~')
+        (CAST(p.[PersonnelNo] AS nvarchar(max)) LIKE {0} ESCAPE '~'
+         OR CAST(p.[LastName] AS nvarchar(max)) LIKE {0} ESCAPE '~'
+         OR CAST(p.[FirstName] AS nvarchar(max)) LIKE {0} ESCAPE '~'
+         OR COALESCE(
+                NULLIF(LTRIM(RTRIM(CAST(p.[SmsContactNumber] AS nvarchar(max)))), N''),
+                directory.[MobileNumber]
+            ) LIKE {0} ESCAPE '~')
+        """;
+
+    // Field15 is the access number in both legacy directories. Prefer STAFF if an
+    // access number happens to occur in both databases, and ignore blank mobiles.
+    private const string MobileNumberLookup = """
+        OUTER APPLY (
+            SELECT TOP (1) NULLIF(LTRIM(RTRIM([Staff-Student-Union].[MobileNumber])), N'') AS [MobileNumber]
+            FROM (
+                SELECT CAST([Field15] AS nvarchar(max)) AS [Field15],
+                       CAST([Field13] AS nvarchar(max)) AS [MobileNumber],
+                       1 AS [SourcePriority]
+                FROM [STAFF].[dbo].[MyDataTable]
+                UNION ALL
+                SELECT CAST([Field15] AS nvarchar(max)) AS [Field15],
+                       CAST([Field10] AS nvarchar(max)) AS [MobileNumber],
+                       2 AS [SourcePriority]
+                FROM [STUDENT].[dbo].[MyDataTable]
+            ) AS [Staff-Student-Union]
+            WHERE [Staff-Student-Union].[Field15] = CAST(p.[AccessNumber] AS nvarchar(max))
+              AND NULLIF(LTRIM(RTRIM([Staff-Student-Union].[MobileNumber])), N'') IS NOT NULL
+            ORDER BY [Staff-Student-Union].[SourcePriority]
+        ) directory
         """;
 }
