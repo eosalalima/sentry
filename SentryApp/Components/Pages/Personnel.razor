@@ -149,7 +149,7 @@
                         <label class="form-label" for="editMobile">SMS Contact Number</label>
                         <input id="editMobile" class="form-control" type="tel" maxlength="@PersonnelManagementService.SmsContactNumberMaxLength"
                                @bind="_editedMobileNumber" @bind:event="oninput" />
-                        <div class="form-text">Up to @PersonnelManagementService.SmsContactNumberMaxLength characters. A blank value clears the SMS contact number.</div>
+                        <div class="form-text">Up to @PersonnelManagementService.SmsContactNumberMaxLength characters. If left blank, the STAFF or STUDENT directory number is used.</div>
                     </div>
                 </div>
                 <div class="modal-footer">

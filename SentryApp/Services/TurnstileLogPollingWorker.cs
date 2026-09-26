@@ -129,7 +129,10 @@ SELECT TOP ({_maxRowsPerPoll})
     p.FirstName          AS FirstName,
     p.PersonnelNo        AS PersonnelNo,
     p.PhotoId            AS PhotoId,
-    p.SmsContactNumber   AS SmsContactNumber,
+    COALESCE(
+        NULLIF(LTRIM(RTRIM(CAST(p.SmsContactNumber AS nvarchar(max)))), N''),
+        directory.MobileNumber
+    )                    AS SmsContactNumber,
 
     dl.Event             AS Event,
     dl.EventAddress      AS EventAddress,
@@ -139,6 +142,23 @@ FROM DeviceLogs dl
 LEFT JOIN [dbo].[Personnels] p
     ON p.AccessNumber = dl.AccessNumber
    AND p.IsDeleted = 0
+OUTER APPLY (
+    SELECT TOP (1) NULLIF(LTRIM(RTRIM([Staff-Student-Union].[MobileNumber])), N'') AS MobileNumber
+    FROM (
+        SELECT CAST(Field15 AS nvarchar(max)) AS Field15,
+               CAST(Field13 AS nvarchar(max)) AS MobileNumber,
+               1 AS SourcePriority
+        FROM [STAFF].[dbo].[MyDataTable]
+        UNION ALL
+        SELECT CAST(Field15 AS nvarchar(max)) AS Field15,
+               CAST(Field10 AS nvarchar(max)) AS MobileNumber,
+               2 AS SourcePriority
+        FROM [STUDENT].[dbo].[MyDataTable]
+    ) AS [Staff-Student-Union]
+    WHERE [Staff-Student-Union].Field15 = CAST(p.AccessNumber AS nvarchar(max))
+      AND NULLIF(LTRIM(RTRIM([Staff-Student-Union].MobileNumber)), N'') IS NOT NULL
+    ORDER BY [Staff-Student-Union].SourcePriority
+) directory
 LEFT JOIN [dbo].[ZKDevices] zk
     ON zk.IsDeleted = 0
    AND zk.SerialNumber = dl.DeviceSerialNumber
