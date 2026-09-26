@@ -47,7 +47,7 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapGet("/photos/{photoId}", (
     string photoId,
-    IOptions<PhotoOptions> options,
+    IOptionsMonitor<PhotoOptions> options,
     IWebHostEnvironment env) =>
 {
     if (string.IsNullOrWhiteSpace(photoId))
@@ -57,7 +57,7 @@ app.MapGet("/photos/{photoId}", (
     }
 
     var sanitizedPhotoId = Path.GetFileName(photoId);
-    var photoDirectory = options.Value.PhotoDirectory;
+    var photoDirectory = options.CurrentValue.PhotoDirectory;
 
     if (!string.IsNullOrWhiteSpace(photoDirectory))
     {

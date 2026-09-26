@@ -7,6 +7,7 @@
 .personnel-state { min-height: 220px; display: flex; flex-direction: column; gap: .75rem; align-items: center; justify-content: center; color: #667085; }
 .personnel-table { white-space: nowrap; }
 .personnel-table thead th { color: #475467; font-size: .875rem; }
+.personnel-photo { width: 52px; height: 52px; display: block; border: 1px solid rgba(0,0,0,.1); border-radius: 6px; object-fit: cover; background: #f2f4f7; }
 .personnel-pagination { display: flex; justify-content: space-between; align-items: center; gap: 1rem; color: #667085; margin-top: .75rem; }
 @media (max-width: 700px) {
   .personnel-page { padding: 10px; }
