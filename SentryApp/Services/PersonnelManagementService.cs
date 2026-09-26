@@ -82,6 +82,7 @@ public sealed class PersonnelManagementService
             SELECT COALESCE(CAST([PersonnelNo] AS nvarchar(max)), N'') AS [PersonnelNo],
                    COALESCE(CAST([LastName] AS nvarchar(max)), N'') AS [LastName],
                    COALESCE(CAST([FirstName] AS nvarchar(max)), N'') AS [FirstName],
+                   CAST([PhotoId] AS nvarchar(max)) AS [PhotoId],
                    CAST([SmsContactNumber] AS nvarchar(max)) AS [SmsContactNumber]
             FROM [dbo].[Personnels]
             WHERE [IsDeleted] = 0 AND {{SearchClause}}
