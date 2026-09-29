@@ -2,20 +2,23 @@
 @rendermode InteractiveServer
 @implements IDisposable
 @inject SentryApp.Services.TurnstileLogState State
+@inject IConfiguration Configuration
 
+@using Microsoft.Extensions.Configuration
 @using SentryApp.Components.Turnstile
+@using SentryApp.Services
 
 <div class="mon-page">
     <MonitoringHeader />
 
-    @if (State.DeviceSnapshots.Count == 0)
+    @if (MonitoredDeviceSnapshots.Count == 0)
     {
-        <div class="device-monitors-empty">Waiting for logs from monitored devices…</div>
+        <div class="device-monitors-empty">Waiting for logs from the selected device…</div>
     }
     else
     {
         <div class="device-monitors">
-            @foreach (var device in State.DeviceSnapshots)
+            @foreach (var device in MonitoredDeviceSnapshots)
             {
                 <DeviceMonitorPanel @key="device.DeviceSerialNumber" Device="device" />
             }
@@ -24,6 +27,12 @@
 </div>
 
 @code {
+    private IReadOnlyList<DeviceMonitorSnapshot> MonitoredDeviceSnapshots => State.DeviceSnapshots
+        .Where(device => DeviceSelection.Matches(
+            Configuration.GetValue<string>("SelectedDeviceSerial"),
+            device.DeviceSerialNumber))
+        .ToList();
+
     protected override void OnInitialized()
     {
         State.Changed += OnStateChanged;

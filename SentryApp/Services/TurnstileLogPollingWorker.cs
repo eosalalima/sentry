@@ -210,6 +210,26 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
                 continue;
             }
 
+            if (!DeviceSelection.Matches(
+                _config.GetValue<string>("SelectedDeviceSerial"),
+                row.DeviceSerialNumber))
+            {
+                if (_flowDiagnosticsEnabled)
+                    _logger.LogInformation("Turnstile flow: row {EntryId} ignored because it does not match the selected device.", row.TimeLogId);
+
+                _seen[row.TimeLogId] = DateTimeOffset.UtcNow;
+                AdvanceCursor(row);
+
+                if (!_isReplayScan)
+                {
+                    _highWaterUtc = row.TimeLogStamp;
+                    _highWaterId = row.TimeLogId;
+                }
+
+                FinishReplayAtHighWater(row);
+                continue;
+            }
+
             var name = BuildName(row);
             var photoUrl = _photoUrlBuilder.Build(row.PhotoId);
             var smsStatusMessage = SendEntrySms(row, row.SmsContactNumber);
