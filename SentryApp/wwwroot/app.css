@@ -14,6 +14,55 @@
   flex-direction:column;
 }
 
+.device-monitors{
+  display:grid;
+  gap:24px;
+  padding:24px;
+}
+
+.device-monitor{
+  overflow:hidden;
+  border:1px solid #d5dce6;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 2px 8px rgba(27, 43, 65, .08);
+}
+
+.device-monitor-header{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:16px;
+  padding:12px 20px;
+  color:#fff;
+  background:#0c3c78;
+}
+
+.device-monitor-header h2{
+  margin:0;
+  font-size:18px;
+  font-weight:700;
+}
+
+.device-monitor-header span{
+  font-size:13px;
+  opacity:.85;
+}
+
+.device-monitor .mon-body{
+  min-height:0;
+}
+
+.device-monitors-empty{
+  margin:24px;
+  padding:28px;
+  border:1px dashed #aeb9c8;
+  border-radius:12px;
+  color:#536273;
+  text-align:center;
+  background:#fff;
+}
+
 .mon-topbar{
   height:44px;
   background:#fff;

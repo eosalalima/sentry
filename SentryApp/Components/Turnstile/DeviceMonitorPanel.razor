@@ -1,0 +1,23 @@
+@using SentryApp.Services
+
+<section class="device-monitor">
+    <header class="device-monitor-header">
+        <h2>@Device.DeviceName</h2>
+        <span>@Device.DeviceSerialNumber</span>
+    </header>
+
+    <div class="mon-body">
+        <div class="mon-left">
+            <LogQueue Items="Device.Queue" />
+        </div>
+
+        <div class="mon-right">
+            <SpotlightPanel Entry="Device.Spotlight" />
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public DeviceMonitorSnapshot Device { get; set; } = default!;
+}

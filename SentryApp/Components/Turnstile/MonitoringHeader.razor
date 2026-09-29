@@ -88,22 +88,8 @@
                     </div>
 
                     <div class="mt-3 mb-3">
-                        <label class="form-label" for="deviceSelect">Device to monitor</label>
-                        <select class="form-select" id="deviceSelect" @bind="_selectedDeviceSerial"
-                            disabled="@_isPollingActive">
-                            @if (_devices.Count == 0)
-                            {
-                                <option disabled value="">No devices available</option>
-                            }
-                            else
-                            {
-                                <option value="@AllDevicesValue">All Devices</option>
-                                @foreach (var device in _devices)
-                                {
-                                    <option value="@device.SerialNumber">@device.Name</option>
-                                }
-                            }
-                        </select>
+                        <label class="form-label">Devices to monitor</label>
+                        <div class="form-text">All devices that report logs are monitored independently and shown in their own panel.</div>
                     </div>
 
                     <div class="form-check form-switch mt-3 mb-3">
