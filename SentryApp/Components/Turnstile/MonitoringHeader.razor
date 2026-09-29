@@ -88,8 +88,16 @@
                     </div>
 
                     <div class="mt-3 mb-3">
-                        <label class="form-label">Devices to monitor</label>
-                        <div class="form-text">All devices that report logs are monitored independently and shown in their own panel.</div>
+                        <label class="form-label" for="deviceToMonitor">Device to monitor</label>
+                        <select class="form-select" id="deviceToMonitor" @bind="_selectedDeviceSerial"
+                            disabled="@_isPollingActive">
+                            <option value="@AllDevicesValue">All devices</option>
+                            @foreach (var device in _devices)
+                            {
+                                <option value="@device.SerialNumber">@DeviceOptionLabel(device)</option>
+                            }
+                        </select>
+                        <div class="form-text">Only logs from the selected device are displayed and processed.</div>
                     </div>
 
                     <div class="form-check form-switch mt-3 mb-3">
@@ -472,7 +480,7 @@
     [Inject]
     private TurnstilePollingController PollingController { get; set; } = default!;
 
-    private const string AllDevicesValue = "1";
+    private const string AllDevicesValue = DeviceSelection.AllDevicesValue;
     private const string SelectedDeviceSerialStorageKey = "SelectedDeviceSerial";
 
     private bool _showSettingsModal;
@@ -581,7 +589,9 @@
 
         _devices = await db.ZkDevices
         .AsNoTracking()
+        .Where(d => !d.IsDeleted)
         .OrderBy(d => d.Name)
+        .ThenBy(d => d.SerialNumber)
         .ToListAsync();
 
         NormalizeSelectedDeviceSerial();
@@ -1311,6 +1321,10 @@
             return "mon-live-btn btn btn-warning";
         }
     }
+
+    private static string DeviceOptionLabel(ZkDevice device) => string.IsNullOrWhiteSpace(device.Name)
+        ? device.SerialNumber
+        : $"{device.Name} ({device.SerialNumber})";
 
     private void EnsureSelectedDeviceSerialIsValid()
     {
