@@ -3,38 +3,76 @@ using Microsoft.Extensions.Logging;
 
 namespace SentryApp.Services;
 
+public sealed record DeviceMonitorSnapshot(
+    string DeviceSerialNumber,
+    string DeviceName,
+    TurnstileLogEntry? Spotlight,
+    IReadOnlyList<TurnstileQueueItem> Queue);
+
 public sealed class TurnstileLogState : IDisposable
 {
-    private const string AllDevicesValue = "1";
     private const int MaxEntriesPerLogType = 10;
     private static readonly TimeSpan FeedItemTtl = TimeSpan.FromSeconds(10);
 
     private readonly object _lock = new();
-    private readonly List<TurnstileQueueItem> _queue = new();
-    private readonly Queue<TurnstileLogEntry> _spotlightQueue = new();
+    private readonly Dictionary<string, DeviceMonitorState> _devices = new(StringComparer.OrdinalIgnoreCase);
     private readonly IConfiguration _configuration;
     private readonly ILogger<TurnstileLogState> _logger;
-    private readonly HashSet<Guid> _queuedEntryIds = new();
-    private readonly HashSet<Guid> _spotlightEntryIds = new();
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly bool _diagnosticsEnabled;
 
-    private string _selectedDeviceSerial = AllDevicesValue;
-    private bool _isProcessingSpotlightQueue;
-
     public event Action? Changed;
 
-    public TurnstileLogEntry? Spotlight { get; private set; }
+    // Retained for callers that need an aggregate view. Multi-device UI should use DeviceSnapshots.
+    public TurnstileLogEntry? Spotlight
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _devices.Values
+                    .Where(device => device.Spotlight is not null)
+                    .OrderByDescending(device => device.Spotlight!.TimeLogStamp)
+                    .Select(device => device.Spotlight)
+                    .FirstOrDefault();
+            }
+        }
+    }
 
     public IReadOnlyList<TurnstileQueueItem> QueueSnapshot
     {
         get
         {
             lock (_lock)
-                return _queue
+            {
+                return _devices.Values
+                    .SelectMany(device => device.Queue)
                     .OrderByDescending(item => item.Entry.TimeLogStamp)
                     .ThenByDescending(item => item.EnqueuedAt)
                     .ToList();
+            }
+        }
+    }
+
+    public IReadOnlyList<DeviceMonitorSnapshot> DeviceSnapshots
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _devices.Values
+                    .OrderBy(device => device.Name, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(device => device.SerialNumber, StringComparer.OrdinalIgnoreCase)
+                    .Select(device => new DeviceMonitorSnapshot(
+                        device.SerialNumber,
+                        device.Name,
+                        device.Spotlight,
+                        device.Queue
+                            .OrderByDescending(item => item.Entry.TimeLogStamp)
+                            .ThenByDescending(item => item.EnqueuedAt)
+                            .ToList()))
+                    .ToList();
+            }
         }
     }
 
@@ -47,31 +85,36 @@ public sealed class TurnstileLogState : IDisposable
 
     public void Push(TurnstileLogEntry entry)
     {
+        ArgumentNullException.ThrowIfNull(entry);
+
         var startProcessor = false;
+        string deviceKey;
 
         lock (_lock)
         {
-            if (!ShouldAcceptEntry(entry)
-                || _queuedEntryIds.Contains(entry.TimeLogId)
-                || !_spotlightEntryIds.Add(entry.TimeLogId))
+            deviceKey = NormalizeDeviceSerial(entry.DeviceSerialNumber);
+            var device = GetOrCreateDeviceUnsafe(deviceKey, entry.DeviceName);
+
+            if (device.QueuedEntryIds.Contains(entry.TimeLogId)
+                || !device.SpotlightEntryIds.Add(entry.TimeLogId))
                 return;
 
-            _spotlightQueue.Enqueue(entry);
-            if (!_isProcessingSpotlightQueue)
+            device.SpotlightQueue.Enqueue(entry);
+            if (!device.IsProcessingSpotlightQueue)
             {
-                _isProcessingSpotlightQueue = true;
+                device.IsProcessingSpotlightQueue = true;
                 startProcessor = true;
             }
         }
 
         if (startProcessor)
-            _ = ProcessSpotlightQueueAsync();
+            _ = ProcessSpotlightQueueAsync(deviceKey);
 
         if (_diagnosticsEnabled)
-            _logger.LogInformation("Turnstile flow: entry {EntryId} added to the spotlight queue.", entry.TimeLogId);
+            _logger.LogInformation("Turnstile flow: entry {EntryId} added to the {DeviceSerialNumber} spotlight queue.", entry.TimeLogId, deviceKey);
     }
 
-    private async Task ProcessSpotlightQueueAsync()
+    private async Task ProcessSpotlightQueueAsync(string deviceKey)
     {
         while (true)
         {
@@ -79,26 +122,23 @@ public sealed class TurnstileLogState : IDisposable
 
             lock (_lock)
             {
-                do
+                if (!_devices.TryGetValue(deviceKey, out var device) || device.SpotlightQueue.Count == 0)
                 {
-                    if (_spotlightQueue.Count == 0)
+                    if (device is not null)
                     {
-                        Spotlight = null;
-                        _isProcessingSpotlightQueue = false;
-                        return;
+                        device.Spotlight = null;
+                        device.IsProcessingSpotlightQueue = false;
                     }
 
-                    entry = _spotlightQueue.Dequeue();
-                    if (!ShouldAcceptEntry(entry))
-                        _spotlightEntryIds.Remove(entry.TimeLogId);
+                    return;
                 }
-                while (!ShouldAcceptEntry(entry));
 
-                Spotlight = entry;
+                entry = device.SpotlightQueue.Dequeue();
+                device.Spotlight = entry;
             }
 
             if (_diagnosticsEnabled)
-                _logger.LogInformation("Turnstile flow: spotlight set for entry {EntryId}.", entry.TimeLogId);
+                _logger.LogInformation("Turnstile flow: spotlight set for entry {EntryId} on {DeviceSerialNumber}.", entry.TimeLogId, deviceKey);
 
             Changed?.Invoke();
 
@@ -114,35 +154,38 @@ public sealed class TurnstileLogState : IDisposable
             var enqueued = false;
             lock (_lock)
             {
-                _spotlightEntryIds.Remove(entry.TimeLogId);
+                if (!_devices.TryGetValue(deviceKey, out var device))
+                    return;
 
-                if (Spotlight?.TimeLogId == entry.TimeLogId)
-                    Spotlight = null;
+                device.SpotlightEntryIds.Remove(entry.TimeLogId);
 
-                if (ShouldAcceptEntry(entry) && _queuedEntryIds.Add(entry.TimeLogId))
+                if (device.Spotlight?.TimeLogId == entry.TimeLogId)
+                    device.Spotlight = null;
+
+                if (device.QueuedEntryIds.Add(entry.TimeLogId))
                 {
-                    _queue.Add(new TurnstileQueueItem
+                    device.Queue.Add(new TurnstileQueueItem
                     {
                         Entry = entry,
                         EnqueuedAt = DateTimeOffset.UtcNow
                     });
 
-                    TrimQueue();
+                    TrimQueue(device);
                     enqueued = true;
                 }
             }
 
             if (enqueued)
-                _ = ExpireFeedItemAsync(entry.TimeLogId, _disposeCts.Token);
+                _ = ExpireFeedItemAsync(deviceKey, entry.TimeLogId, _disposeCts.Token);
 
             if (_diagnosticsEnabled && enqueued)
-                _logger.LogInformation("Turnstile flow: entry {EntryId} moved to feed queue.", entry.TimeLogId);
+                _logger.LogInformation("Turnstile flow: entry {EntryId} moved to the {DeviceSerialNumber} feed queue.", entry.TimeLogId, deviceKey);
 
             Changed?.Invoke();
         }
     }
 
-    private async Task ExpireFeedItemAsync(Guid entryId, CancellationToken ct)
+    private async Task ExpireFeedItemAsync(string deviceKey, Guid entryId, CancellationToken ct)
     {
         try
         {
@@ -154,13 +197,14 @@ public sealed class TurnstileLogState : IDisposable
         }
 
         var removed = false;
-
         lock (_lock)
         {
-            var removedCount = _queue.RemoveAll(item => item.Entry.TimeLogId == entryId);
-            if (removedCount > 0)
+            if (!_devices.TryGetValue(deviceKey, out var device))
+                return;
+
+            if (device.Queue.RemoveAll(item => item.Entry.TimeLogId == entryId) > 0)
             {
-                _queuedEntryIds.Remove(entryId);
+                device.QueuedEntryIds.Remove(entryId);
                 removed = true;
             }
         }
@@ -169,15 +213,9 @@ public sealed class TurnstileLogState : IDisposable
             return;
 
         if (_diagnosticsEnabled)
-            _logger.LogInformation("Turnstile flow: entry {EntryId} expired from feed queue.", entryId);
+            _logger.LogInformation("Turnstile flow: entry {EntryId} expired from the {DeviceSerialNumber} feed queue.", entryId, deviceKey);
 
         Changed?.Invoke();
-    }
-
-    private void TrimQueue()
-    {
-        TrimQueueForType(IsInLogType);
-        TrimQueueForType(IsOutOrBreakOutLogType);
     }
 
     public void Dispose()
@@ -186,57 +224,27 @@ public sealed class TurnstileLogState : IDisposable
 
         lock (_lock)
         {
-            _spotlightQueue.Clear();
-            _spotlightEntryIds.Clear();
+            foreach (var device in _devices.Values)
+            {
+                device.SpotlightQueue.Clear();
+                device.SpotlightEntryIds.Clear();
+            }
         }
 
         _disposeCts.Dispose();
     }
 
-    public void UpdateSelectedDeviceSerial(string? selectedDeviceSerial)
+    private DeviceMonitorState GetOrCreateDeviceUnsafe(string deviceKey, string? deviceName)
     {
-        var normalized = string.IsNullOrWhiteSpace(selectedDeviceSerial) ? AllDevicesValue : selectedDeviceSerial;
-
-        lock (_lock)
+        if (_devices.TryGetValue(deviceKey, out var device))
         {
-            if (string.Equals(_selectedDeviceSerial, normalized, StringComparison.OrdinalIgnoreCase))
-                return;
-
-            _selectedDeviceSerial = normalized;
-
-            if (_spotlightQueue.Count > 0)
-            {
-                var retainedEntries = _spotlightQueue.Where(ShouldAcceptEntry).ToList();
-                _spotlightQueue.Clear();
-                foreach (var entry in retainedEntries)
-                    _spotlightQueue.Enqueue(entry);
-
-                _spotlightEntryIds.Clear();
-                foreach (var entry in retainedEntries)
-                    _spotlightEntryIds.Add(entry.TimeLogId);
-
-                if (Spotlight is not null)
-                    _spotlightEntryIds.Add(Spotlight.TimeLogId);
-            }
-
-            if (_selectedDeviceSerial != AllDevicesValue)
-            {
-                var removedItems = _queue
-                    .Where(item => !ShouldAcceptEntry(item.Entry))
-                    .Select(item => item.Entry.TimeLogId)
-                    .ToList();
-
-                _queue.RemoveAll(item => !ShouldAcceptEntry(item.Entry));
-
-                foreach (var entryId in removedItems)
-                    _queuedEntryIds.Remove(entryId);
-
-                if (Spotlight is not null && !ShouldAcceptEntry(Spotlight))
-                    Spotlight = null;
-            }
+            device.UpdateName(deviceName);
+            return device;
         }
 
-        Changed?.Invoke();
+        device = new DeviceMonitorState(deviceKey, string.IsNullOrWhiteSpace(deviceName) ? deviceKey : deviceName);
+        _devices.Add(deviceKey, device);
+        return device;
     }
 
     private TimeSpan GetHighlightDisplayDuration()
@@ -247,41 +255,32 @@ public sealed class TurnstileLogState : IDisposable
             ?? _configuration.GetValue<int?>("HighlightDisplayDuration")
             ?? 3000;
 
-        if (highlightMs < 1)
-            highlightMs = 1;
-
-        return TimeSpan.FromMilliseconds(highlightMs);
+        return TimeSpan.FromMilliseconds(Math.Max(1, highlightMs));
     }
 
-    private bool ShouldAcceptEntry(TurnstileLogEntry entry)
-    {
-        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
-            return true;
+    private static string NormalizeDeviceSerial(string? serialNumber) =>
+        string.IsNullOrWhiteSpace(serialNumber) ? "Unknown device" : serialNumber.Trim();
 
-        return string.Equals(entry.DeviceSerialNumber, _selectedDeviceSerial, StringComparison.OrdinalIgnoreCase);
+    private static void TrimQueue(DeviceMonitorState device)
+    {
+        TrimQueueForType(device, IsInLogType);
+        TrimQueueForType(device, IsOutOrBreakOutLogType);
     }
 
-    private void TrimQueueForType(Func<TurnstileLogEntry, bool> typePredicate)
+    private static void TrimQueueForType(DeviceMonitorState device, Func<TurnstileLogEntry, bool> typePredicate)
     {
-        while (CountForType(typePredicate) > MaxEntriesPerLogType)
+        while (device.Queue.Count(item => typePredicate(item.Entry)) > MaxEntriesPerLogType)
         {
-            var index = _queue.FindIndex(item => typePredicate(item.Entry));
+            var index = device.Queue.FindIndex(item => typePredicate(item.Entry));
             if (index < 0)
                 break;
 
-            _queuedEntryIds.Remove(_queue[index].Entry.TimeLogId);
-            _queue.RemoveAt(index);
+            device.QueuedEntryIds.Remove(device.Queue[index].Entry.TimeLogId);
+            device.Queue.RemoveAt(index);
         }
     }
 
-    private int CountForType(Func<TurnstileLogEntry, bool> typePredicate)
-        => _queue.Count(item => typePredicate(item.Entry));
-
-    private static bool IsInLogType(TurnstileLogEntry entry)
-    {
-        var normalized = NormalizeLogType(entry.LogType);
-        return normalized.Contains("IN", StringComparison.Ordinal);
-    }
+    private static bool IsInLogType(TurnstileLogEntry entry) => NormalizeLogType(entry.LogType).Contains("IN", StringComparison.Ordinal);
 
     private static bool IsOutOrBreakOutLogType(TurnstileLogEntry entry)
     {
@@ -290,14 +289,31 @@ public sealed class TurnstileLogState : IDisposable
             || normalized.Contains("BREAK", StringComparison.Ordinal);
     }
 
-    private static string NormalizeLogType(string? logType)
-    {
-        if (string.IsNullOrWhiteSpace(logType))
-            return string.Empty;
+    private static string NormalizeLogType(string? logType) => string.IsNullOrWhiteSpace(logType)
+        ? string.Empty
+        : logType.Trim().Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant();
 
-        return logType
-            .Trim()
-            .Replace(" ", string.Empty, StringComparison.Ordinal)
-            .ToUpperInvariant();
+    private sealed class DeviceMonitorState
+    {
+        public DeviceMonitorState(string serialNumber, string name)
+        {
+            SerialNumber = serialNumber;
+            Name = name;
+        }
+
+        public string SerialNumber { get; }
+        public string Name { get; private set; }
+        public TurnstileLogEntry? Spotlight { get; set; }
+        public Queue<TurnstileLogEntry> SpotlightQueue { get; } = new();
+        public List<TurnstileQueueItem> Queue { get; } = new();
+        public HashSet<Guid> QueuedEntryIds { get; } = new();
+        public HashSet<Guid> SpotlightEntryIds { get; } = new();
+        public bool IsProcessingSpotlightQueue { get; set; }
+
+        public void UpdateName(string? name)
+        {
+            if (!string.IsNullOrWhiteSpace(name))
+                Name = name;
+        }
     }
 }

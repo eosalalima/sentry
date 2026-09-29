@@ -97,6 +97,67 @@ public class TurnstileLogStateTests
         }
     }
 
+    [Fact]
+    public async Task Push_UsesIndependentSpotlightsAndQueuesForEachDevice()
+    {
+        using var state = CreateState(highlightMs: 75);
+        var deviceAEntry = CreateEntry(Guid.NewGuid(), "IN", deviceSerialNumber: "device-a", deviceName: "North Gate");
+        var deviceBEntry = CreateEntry(Guid.NewGuid(), "OUT", deviceSerialNumber: "device-b", deviceName: "South Gate");
+
+        state.Push(deviceAEntry);
+        state.Push(deviceBEntry);
+
+        await EventuallyAsync(() =>
+        {
+            var snapshots = state.DeviceSnapshots;
+            return snapshots.Count == 2
+                && snapshots.All(snapshot => snapshot.Spotlight is not null);
+        }, TimeSpan.FromSeconds(2));
+
+        Assert.Collection(
+            state.DeviceSnapshots.OrderBy(snapshot => snapshot.DeviceSerialNumber),
+            snapshot =>
+            {
+                Assert.Equal("device-a", snapshot.DeviceSerialNumber);
+                Assert.Equal(deviceAEntry.TimeLogId, snapshot.Spotlight!.TimeLogId);
+                Assert.Equal("North Gate", snapshot.DeviceName);
+            },
+            snapshot =>
+            {
+                Assert.Equal("device-b", snapshot.DeviceSerialNumber);
+                Assert.Equal(deviceBEntry.TimeLogId, snapshot.Spotlight!.TimeLogId);
+                Assert.Equal("South Gate", snapshot.DeviceName);
+            });
+
+        await EventuallyAsync(() => state.DeviceSnapshots.All(snapshot => snapshot.Queue.Count == 1), TimeSpan.FromSeconds(2));
+
+        Assert.All(state.DeviceSnapshots, snapshot =>
+            Assert.All(snapshot.Queue, item =>
+                Assert.Equal(snapshot.DeviceSerialNumber, item.Entry.DeviceSerialNumber)));
+    }
+
+    [Fact]
+    public async Task Push_EnforcesQueueCapacityPerDevice()
+    {
+        using var state = CreateState(highlightMs: 1);
+        var deviceAIds = Enumerable.Range(0, 11).Select(_ => Guid.NewGuid()).ToList();
+        var deviceBIds = Enumerable.Range(0, 11).Select(_ => Guid.NewGuid()).ToList();
+
+        foreach (var id in deviceAIds)
+            state.Push(CreateEntry(id, "IN", deviceSerialNumber: "device-a"));
+
+        foreach (var id in deviceBIds)
+            state.Push(CreateEntry(id, "IN", deviceSerialNumber: "device-b"));
+
+        await EventuallyAsync(() => state.DeviceSnapshots.All(snapshot => snapshot.Queue.Count == 10), TimeSpan.FromSeconds(2));
+
+        var snapshots = state.DeviceSnapshots.ToDictionary(snapshot => snapshot.DeviceSerialNumber);
+        Assert.DoesNotContain(deviceAIds[0], snapshots["device-a"].Queue.Select(item => item.Entry.TimeLogId));
+        Assert.DoesNotContain(deviceBIds[0], snapshots["device-b"].Queue.Select(item => item.Entry.TimeLogId));
+        Assert.Equal(10, snapshots["device-a"].Queue.Count);
+        Assert.Equal(10, snapshots["device-b"].Queue.Count);
+    }
+
     private static TurnstileLogState CreateState(int highlightMs)
     {
         var cfg = new ConfigurationBuilder()
@@ -112,11 +173,15 @@ public class TurnstileLogStateTests
     private static TurnstileLogEntry CreateEntry(
         Guid id,
         string logType,
-        DateTimeOffset? timeLogStamp = null) => new()
+        DateTimeOffset? timeLogStamp = null,
+        string? deviceSerialNumber = null,
+        string? deviceName = null) => new()
     {
         TimeLogId = id,
         TimeLogStamp = timeLogStamp ?? DateTimeOffset.UtcNow,
         LogType = logType,
+        DeviceSerialNumber = deviceSerialNumber,
+        DeviceName = deviceName,
         PersonnelName = "Test"
     };
 
