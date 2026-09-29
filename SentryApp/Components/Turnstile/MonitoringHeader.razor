@@ -18,7 +18,23 @@
     <div class="mon-brand">
         <img class="mon-logo" src="/img/logo.png" alt="Logo" />
         <div>
-            <div class="mon-title">@MonitoringTitle</div>
+            <div class="mon-device-selector">
+                <label for="deviceToMonitor">Device to monitor</label>
+                <select id="deviceToMonitor" value="@_selectedDeviceSerial" @onchange="OnSelectedDeviceChangedAsync"
+                    disabled="@(_devices.Count == 0)">
+                    @if (_devices.Count == 0)
+                    {
+                        <option value="">Loading devices…</option>
+                    }
+                    else
+                    {
+                        @foreach (var device in _devices)
+                        {
+                            <option value="@device.SerialNumber">@DeviceOptionLabel(device)</option>
+                        }
+                    }
+                </select>
+            </div>
             <div class="mon-subtitle"><strong>DR. GLORIA D. LACSON FOUNDATION COLLEGES</strong></div>
         </div>
     </div>
@@ -85,19 +101,6 @@
                             disabled="@_isPollingActive" />
                         <label class="form-check-label" for="liveMode">Live mode</label>
                         <div class="form-text">Toggle off to switch to demo mode.</div>
-                    </div>
-
-                    <div class="mt-3 mb-3">
-                        <label class="form-label" for="deviceToMonitor">Device to monitor</label>
-                        <select class="form-select" id="deviceToMonitor" @bind="_selectedDeviceSerial"
-                            disabled="@_isPollingActive">
-                            <option value="@AllDevicesValue">All devices</option>
-                            @foreach (var device in _devices)
-                            {
-                                <option value="@device.SerialNumber">@DeviceOptionLabel(device)</option>
-                            }
-                        </select>
-                        <div class="form-text">Only logs from the selected device are displayed and processed.</div>
                     </div>
 
                     <div class="form-check form-switch mt-3 mb-3">
@@ -480,6 +483,9 @@
     [Inject]
     private TurnstilePollingController PollingController { get; set; } = default!;
 
+    [Inject]
+    private DeviceMonitorSelection DeviceMonitorSelection { get; set; } = default!;
+
     private const string AllDevicesValue = DeviceSelection.AllDevicesValue;
     private const string SelectedDeviceSerialStorageKey = "SelectedDeviceSerial";
 
@@ -635,6 +641,14 @@
         _isPollingActive = PollingController.IsActive;
     }
 
+    private async Task OnSelectedDeviceChangedAsync(ChangeEventArgs args)
+    {
+        _selectedDeviceSerial = args.Value?.ToString() ?? string.Empty;
+        NormalizeSelectedDeviceSerial();
+        DeviceMonitorSelection.Set(_selectedDeviceSerial);
+        await SetSelectedDeviceSerialAsync(_selectedDeviceSerial);
+    }
+
     private async Task SaveSettingsAsync()
     {
         try
@@ -658,8 +672,6 @@
             _selectedDeviceSerial = string.IsNullOrWhiteSpace(_selectedDeviceSerial)
             ? AllDevicesValue
             : _selectedDeviceSerial;
-
-            await SetSelectedDeviceSerialAsync(_selectedDeviceSerial);
 
             await UpdateAppSettingsAsync();
             EnsureSelectedDeviceSerialIsValid();
@@ -975,6 +987,7 @@
             _selectedDeviceSerial = storedSerial;
 
         NormalizeSelectedDeviceSerial();
+        DeviceMonitorSelection.Set(_selectedDeviceSerial);
     }
 
     private void OnPollingStatusChanged(bool isActive)
@@ -1177,6 +1190,7 @@
 
         NormalizeSelectedDeviceSerial();
         await SetSelectedDeviceSerialAsync(_selectedDeviceSerial);
+        DeviceMonitorSelection.Set(_selectedDeviceSerial);
     }
 
     private void NormalizeSelectedDeviceSerial()
@@ -1184,7 +1198,7 @@
         if (_devices.Count == 0)
             return;
 
-        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
+        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
         {
             _selectedDeviceSerial = _devices[0].SerialNumber;
             return;
@@ -1331,24 +1345,10 @@
         if (_devices.Count == 0)
             return;
 
-        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial))
+        if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
             _selectedDeviceSerial = _devices[0].SerialNumber;
         else if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
             _selectedDeviceSerial = _devices[0].SerialNumber;
     }
 
-    private string MonitoringTitle
-    {
-        get
-        {
-            if (_selectedDeviceSerial == AllDevicesValue)
-                return "ALL DEVICES MONITORING";
-
-            var deviceName = _devices.FirstOrDefault(d => d.SerialNumber == _selectedDeviceSerial)?.Name;
-            if (!string.IsNullOrWhiteSpace(deviceName))
-                return $"{deviceName.ToUpperInvariant()} MONITORING";
-
-            return "GATE 1 MONITORING";
-        }
-    }
 }

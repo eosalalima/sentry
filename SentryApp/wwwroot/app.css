@@ -100,9 +100,28 @@
   padding:6px;
 }
 
-.mon-title{
+.mon-device-selector{
+  display:grid;
+  gap:4px;
+}
+
+.mon-device-selector label{
+  color:#536273;
+  font-size:12px;
   font-weight:700;
   letter-spacing:.3px;
+  text-transform:uppercase;
+}
+
+.mon-device-selector select{
+  min-width:min(420px, 58vw);
+  padding:6px 34px 6px 10px;
+  border:1px solid #0c3c78;
+  border-radius:6px;
+  color:#0c3c78;
+  background:#fff;
+  font-size:16px;
+  font-weight:700;
 }
 
 .mon-subtitle{

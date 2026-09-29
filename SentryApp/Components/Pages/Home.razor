@@ -2,9 +2,8 @@
 @rendermode InteractiveServer
 @implements IDisposable
 @inject SentryApp.Services.TurnstileLogState State
-@inject IConfiguration Configuration
+@inject DeviceMonitorSelection DeviceMonitorSelection
 
-@using Microsoft.Extensions.Configuration
 @using SentryApp.Components.Turnstile
 @using SentryApp.Services
 
@@ -29,13 +28,14 @@
 @code {
     private IReadOnlyList<DeviceMonitorSnapshot> MonitoredDeviceSnapshots => State.DeviceSnapshots
         .Where(device => DeviceSelection.Matches(
-            Configuration.GetValue<string>("SelectedDeviceSerial"),
+            DeviceMonitorSelection.SerialNumber,
             device.DeviceSerialNumber))
         .ToList();
 
     protected override void OnInitialized()
     {
         State.Changed += OnStateChanged;
+        DeviceMonitorSelection.Changed += OnStateChanged;
     }
 
     private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
@@ -43,5 +43,6 @@
     public void Dispose()
     {
         State.Changed -= OnStateChanged;
+        DeviceMonitorSelection.Changed -= OnStateChanged;
     }
 }
