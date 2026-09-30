@@ -4,17 +4,21 @@ namespace SentryApp.Services;
 
 public interface IPhotoUrlBuilder
 {
-    string Build(string? photoId);
+    string Build(string? photoId, string? personnelNo = null);
 }
 
 public sealed class PhotoUrlBuilder : IPhotoUrlBuilder
 {
-    public string Build(string? photoId)
+    public string Build(string? photoId, string? personnelNo = null)
     {
-        if (string.IsNullOrWhiteSpace(photoId))
-            return "/img/avatar-placeholder.svg";
+        var path = string.IsNullOrWhiteSpace(photoId)
+            ? "/photos"
+            : $"/photos/{Uri.EscapeDataString(photoId)}";
 
-        // Serve via the /photos endpoint so the server can resolve files from the configured directory.
-        return $"/photos/{Uri.EscapeDataString(photoId)}";
+        // Include the personnel number so the photo endpoint can audit which
+        // personnel record caused each image retrieval.
+        return string.IsNullOrWhiteSpace(personnelNo)
+            ? path
+            : $"{path}?personnelNo={Uri.EscapeDataString(personnelNo)}";
     }
 }
