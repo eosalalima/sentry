@@ -211,7 +211,7 @@ ORDER BY dl.TimeLogStamp ASC, dl.Id ASC;";
             }
 
             var name = BuildName(row);
-            var photoUrl = _photoUrlBuilder.Build(row.PhotoId);
+            var photoUrl = _photoUrlBuilder.Build(row.PhotoId, row.PersonnelNo);
             var smsStatusMessage = SendEntrySms(row, row.SmsContactNumber);
 
             var entry = new TurnstileLogEntry

@@ -25,6 +25,7 @@ builder.Services.AddSingleton<TurnstilePollingController>();
 builder.Services.AddScoped<DeviceMonitorSelection>();
 builder.Services.Configure<PhotoOptions>(builder.Configuration.GetSection("PhotoOptions"));
 builder.Services.AddSingleton<IPhotoUrlBuilder, PhotoUrlBuilder>();
+builder.Services.AddSingleton<PictureRetrievalLogWriter>();
 builder.Services.AddSingleton<PersonnelManagementService>();
 builder.Services.AddSingleton<SmsModuleSender>();
 builder.Services.AddSingleton<MonitoringDataLogWriter>();
@@ -46,28 +47,29 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
-app.MapGet("/photos/{photoId}", (
-    string photoId,
+app.MapGet("/photos/{photoId?}", async (
+    string? photoId,
+    string? personnelNo,
     IOptionsMonitor<PhotoOptions> options,
-    IWebHostEnvironment env) =>
+    IWebHostEnvironment env,
+    PictureRetrievalLogWriter pictureLog) =>
 {
-    if (string.IsNullOrWhiteSpace(photoId))
-    {
-        var placeholder = Path.Combine(env.WebRootPath, "img", "avatar-placeholder.svg");
-        return Results.File(placeholder, "image/svg+xml");
-    }
-
-    var sanitizedPhotoId = Path.GetFileName(photoId);
+    var sanitizedPhotoId = Path.GetFileName(photoId?.Trim());
     var photoDirectory = options.CurrentValue.PhotoDirectory;
 
-    if (!string.IsNullOrWhiteSpace(photoDirectory))
+    if (!string.IsNullOrWhiteSpace(sanitizedPhotoId)
+        && !string.IsNullOrWhiteSpace(photoDirectory))
     {
         var photoPath = Path.Combine(photoDirectory, $"{sanitizedPhotoId}.jpg");
         if (File.Exists(photoPath))
+        {
+            await pictureLog.LogAsync(personnelNo, Path.GetFileName(photoPath), true, CancellationToken.None);
             return Results.File(photoPath, "image/jpeg");
+        }
     }
 
     var placeholderPath = Path.Combine(env.WebRootPath, "img", "avatar-placeholder.svg");
+    await pictureLog.LogAsync(personnelNo, Path.GetFileName(placeholderPath), false, CancellationToken.None);
     return Results.File(placeholderPath, "image/svg+xml");
 });
 
