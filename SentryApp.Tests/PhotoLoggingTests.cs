@@ -21,6 +21,68 @@ public sealed class PhotoLoggingTests
         Assert.Equal(expected, builder.Build(photoId, personnelNo));
     }
 
+    [Theory]
+    [InlineData("B26-12345", "2612345")]
+    [InlineData(" K26 / 12.345 ", "2612345")]
+    [InlineData("ABC-!", "")]
+    [InlineData(null, "")]
+    public void PersonnelPhotoResolver_StripsLettersAndSpecialCharacters(
+        string? value,
+        string expected)
+    {
+        Assert.Equal(expected, PersonnelPhotoResolver.DigitsOnly(value));
+    }
+
+    [Theory]
+    [InlineData("2612345.jpg")]
+    [InlineData("K26-12345.jpg")]
+    public void PersonnelPhotoResolver_MatchesPersonnelNumberToNormalizedFilename(string fileName)
+    {
+        var photoDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(photoDirectory);
+
+        try
+        {
+            var expectedPath = Path.Combine(photoDirectory, fileName);
+            File.WriteAllText(expectedPath, "photo");
+
+            var actualPath = PersonnelPhotoResolver.FindPhotoPath(
+                photoDirectory,
+                photoId: null,
+                personnelNo: "B26-12345");
+
+            Assert.Equal(expectedPath, actualPath);
+        }
+        finally
+        {
+            Directory.Delete(photoDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void PersonnelPhotoResolver_FallsBackToExplicitPhotoId()
+    {
+        var photoDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(photoDirectory);
+
+        try
+        {
+            var expectedPath = Path.Combine(photoDirectory, "existing-photo.jpg");
+            File.WriteAllText(expectedPath, "photo");
+
+            var actualPath = PersonnelPhotoResolver.FindPhotoPath(
+                photoDirectory,
+                photoId: "existing-photo",
+                personnelNo: null);
+
+            Assert.Equal(expectedPath, actualPath);
+        }
+        finally
+        {
+            Directory.Delete(photoDirectory, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task PictureRetrievalLogWriter_RecordsPersonnelNumberAndFile()
     {

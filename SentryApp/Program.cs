@@ -54,18 +54,13 @@ app.MapGet("/photos/{photoId?}", async (
     IWebHostEnvironment env,
     PictureRetrievalLogWriter pictureLog) =>
 {
-    var sanitizedPhotoId = Path.GetFileName(photoId?.Trim());
     var photoDirectory = options.CurrentValue.PhotoDirectory;
+    var photoPath = PersonnelPhotoResolver.FindPhotoPath(photoDirectory, photoId, personnelNo);
 
-    if (!string.IsNullOrWhiteSpace(sanitizedPhotoId)
-        && !string.IsNullOrWhiteSpace(photoDirectory))
+    if (photoPath is not null)
     {
-        var photoPath = Path.Combine(photoDirectory, $"{sanitizedPhotoId}.jpg");
-        if (File.Exists(photoPath))
-        {
-            await pictureLog.LogAsync(personnelNo, Path.GetFileName(photoPath), true, CancellationToken.None);
-            return Results.File(photoPath, "image/jpeg");
-        }
+        await pictureLog.LogAsync(personnelNo, Path.GetFileName(photoPath), true, CancellationToken.None);
+        return Results.File(photoPath, "image/jpeg");
     }
 
     var placeholderPath = Path.Combine(env.WebRootPath, "img", "avatar-placeholder.svg");
