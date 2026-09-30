@@ -20,18 +20,11 @@
         <div>
             <div class="mon-device-selector">
                 <label for="deviceToMonitor">Device to monitor</label>
-                <select id="deviceToMonitor" value="@_selectedDeviceSerial" @onchange="OnSelectedDeviceChangedAsync"
-                    disabled="@(_devices.Count == 0)">
-                    @if (_devices.Count == 0)
+                <select id="deviceToMonitor" value="@_selectedDeviceSerial" @onchange="OnSelectedDeviceChangedAsync">
+                    <option value="@AllDevicesValue">All</option>
+                    @foreach (var device in _devices)
                     {
-                        <option value="">Loading devices…</option>
-                    }
-                    else
-                    {
-                        @foreach (var device in _devices)
-                        {
-                            <option value="@device.SerialNumber">@DeviceOptionLabel(device)</option>
-                        }
+                        <option value="@device.SerialNumber">@DeviceOptionLabel(device)</option>
                     }
                 </select>
             </div>
@@ -1195,17 +1188,14 @@
 
     private void NormalizeSelectedDeviceSerial()
     {
-        if (_devices.Count == 0)
-            return;
-
         if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
         {
-            _selectedDeviceSerial = _devices[0].SerialNumber;
+            _selectedDeviceSerial = AllDevicesValue;
             return;
         }
 
-        if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
-            _selectedDeviceSerial = _devices[0].SerialNumber;
+        if (_devices.All(d => d.SerialNumber != _selectedDeviceSerial))
+            _selectedDeviceSerial = AllDevicesValue;
     }
 
     private async Task ShowToastAsync(string message, string variant)
@@ -1342,13 +1332,10 @@
 
     private void EnsureSelectedDeviceSerialIsValid()
     {
-        if (_devices.Count == 0)
-            return;
-
         if (string.IsNullOrWhiteSpace(_selectedDeviceSerial) || _selectedDeviceSerial == AllDevicesValue)
-            _selectedDeviceSerial = _devices[0].SerialNumber;
-        else if (_selectedDeviceSerial != AllDevicesValue && _devices.All(d => d.SerialNumber != _selectedDeviceSerial))
-            _selectedDeviceSerial = _devices[0].SerialNumber;
+            _selectedDeviceSerial = AllDevicesValue;
+        else if (_devices.All(d => d.SerialNumber != _selectedDeviceSerial))
+            _selectedDeviceSerial = AllDevicesValue;
     }
 
 }
